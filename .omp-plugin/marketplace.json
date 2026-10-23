@@ -1,0 +1,20 @@
+{
+  "name": "ai-acceleration",
+  "owner": {
+    "name": "Martin Rojas"
+  },
+  "metadata": {
+    "description": "OMP plugins for structured, cost-aware agentic development"
+  },
+  "plugins": [
+    {
+      "name": "omp-superpowers",
+      "source": "./plugins/omp-superpowers",
+      "description": "Superpowers-derived brainstorm → plan → execute → finish workflow for OMP, with model-role-routed implementer and reviewer agents",
+      "version": "0.1.0",
+      "license": "MIT",
+      "category": "development",
+      "tags": ["workflow", "planning", "tdd", "code-review", "debugging", "subagents"]
+    }
+  ]
+}
