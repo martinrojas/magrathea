@@ -43,8 +43,8 @@ Adapted from [obra/superpowers](https://github.com/obra/superpowers) at commit
 - Per-call model selection is replaced by agent variants bound to OMP model roles (`@smol`, `@task`, `@slow`, `@plan`).
   Static prompt templates live in agent bodies or hidden contract skills; dispatches carry only per-task values.
 - Waiting guidance: OMP delivers subagent results automatically; no polling or bounded waits.
-- Git: plan headers carry a `**Git:**` line; plan approval authorizes local commits on the task branch only (spec, plan, task
-  commits). Push/PR/merge/branch deletion/worktree removal need explicit user choice. `git merge --no-ff`, `git pull --ff-only`
+- Git: plan headers carry a `**Git:**` line; local task-branch commits (spec, plan, task) follow user/repository instructions,
+  and plan approval authorizes them where those are silent. Push/PR/merge/branch deletion/worktree removal need explicit user choice. `git merge --no-ff`, `git pull --ff-only`
   only when the base has an upstream, never force-push.
 - Precedence line added: user and repository instructions override the skills. "Announce at start" lines removed.
 
@@ -52,7 +52,7 @@ Adapted from [obra/superpowers](https://github.com/obra/superpowers) at commit
 
 - **brainstorming:** description scoped to larger work or an explicit brainstorm/design request (no "before any creative work",
   no non-software scope); hard gate applies only to triggered work; builder check dispatches `sp-builder-check`; recon may use
-  OMP's `scout`; spec path fixed to `docs/superpowers/specs/`, written but committed only with authorization; spikes use a `spike/` branch.
+  OMP's `scout`; spec path fixed to `docs/superpowers/specs/`, committed on the task branch when instructions make that the default (otherwise after plan approval); spikes use a `spike/` branch.
 - **writing-plans:** description scoped to an approved design/spec or an explicit plan request; project-sized plans are written
   by `sp-planner` (main session reviews against the spec); `**Git:**` and `**Test command:**` lines added to the templates;
   after approval the controller commits spec + plan; "Native" execution option renamed "Inline"; code-simplicity bullet added.

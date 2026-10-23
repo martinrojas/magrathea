@@ -70,7 +70,7 @@ independently testable deliverable.
 **Spec:** [path to the spec/design doc this plan implements — the plan
 argues from the spec, so the spec travels with it; executors read both]
 
-**Git:** Task branch `[feature/<name>]`. Approving this plan authorizes local commits on that branch only (spec, plan, and task commits). Push, PR creation, merge, branch deletion, and worktree removal need separate explicit approval.
+**Git:** Task branch `[feature/<name>]`. Local commits on that branch (spec, plan, and task commits) follow user/repository instructions; where those are silent, approving this plan authorizes them. Push, PR creation, merge, branch deletion, and worktree removal need separate explicit approval.
 
 ## Global Constraints
 
@@ -190,8 +190,10 @@ If you find issues, fix them inline. No need to re-review — just fix and move 
 (Main session only; the `sp-planner` agent skips this section.)
 
 After saving and self-reviewing the plan, link it for your human partner
-to read. Approval of the plan is the go-ahead to execute and, per the plan's
-`**Git:**` line, authorizes local commits on the task branch. If they have
+to read. Approval of the plan is the go-ahead to execute. Where user or
+repository instructions do not already make task-branch commits the
+default, it also authorizes local commits on the task branch (the plan's
+`**Git:**` line). If they have
 already explicitly supplied an execution method, ask them to review the plan
 and confirm it captures what they want; wait for that review before
 implementation, then use the preserved method. Otherwise, ask them to review
@@ -199,7 +201,7 @@ the plan and choose an execution method before implementation.
 
 **When no execution method has already been supplied:**
 
-**"Plan complete and saved to `docs/superpowers/plans/<filename>.md`. Please review the plan. Approving it also authorizes local commits on `<task-branch>` (nothing is pushed or merged without separate approval). Which execution approach would you prefer?**
+**"Plan complete and saved to `docs/superpowers/plans/<filename>.md`. Please review the plan. Nothing is pushed or merged without separate approval. Which execution approach would you prefer?**
 
 - **Subagent-driven** - A fresh subagent implements each task and a fresh reviewer checks it before the next one starts, then a whole-branch review at the end. Most thorough; costs a fresh context per task and per review.
 - **Inline** - I implement every task myself in this session, then one fresh reviewer on the most capable model checks the whole branch. Cheapest and fastest; no independent review until the end. Runs well with a mid-tier session model, since the plan carries the design.
@@ -208,9 +210,9 @@ the plan and choose an execution method before implementation.
 
 **When an execution method has already been supplied:**
 
-**"Plan complete and saved to `docs/superpowers/plans/<filename>.md`. Please review the plan. Approving it also authorizes local commits on `<task-branch>`. Does it capture what you want?"**
+**"Plan complete and saved to `docs/superpowers/plans/<filename>.md`. Please review the plan. Does it capture what you want?"**
 
-**After approval (both paths):** ensure the task branch from the plan's `**Git:**` line exists and is checked out, then commit the spec and plan before reading the execution skill:
+**After approval (both paths):** ensure the task branch from the plan's `**Git:**` line exists and is checked out, then commit the spec and plan (if not already committed) before reading the execution skill:
 
 ```bash
 git add <spec> <plan> && git commit -m "docs: spec and plan for <feature>"

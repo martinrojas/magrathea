@@ -32,7 +32,8 @@ that norms say you ask about first (a merge, a push to a shared branch, a
 publish); and a plan so broken that every path forward is a guess. For those,
 stop and ask. Push, PR creation, merge, branch deletion, and worktree
 removal always need separate explicit user approval. Local commits on the
-plan's task branch are authorized by plan approval.
+plan's task branch follow user/repository instructions; where those are
+silent, plan approval authorizes them.
 
 ## When to Use
 
@@ -110,8 +111,7 @@ protected branch. Create a worktree only when repo or user instructions call
 for one or the current tree holds unrelated uncommitted work; otherwise work
 in place without asking. Implementers run sequentially in the shared tree —
 never use the `task` tool's `isolated` option for plan tasks. If the spec and
-plan are not yet committed, commit them on the task branch (plan approval
-authorized it).
+plan are not yet committed, commit them on the task branch.
 
 Conversation memory does not survive compaction. In real sessions,
 controllers that lost their place have re-dispatched entire completed task

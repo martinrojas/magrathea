@@ -123,12 +123,12 @@ digraph process {
 Make sure you are on the task branch named in the plan's `**Git:**` line.
 Never implement on the base/protected branch (main/master/develop or
 whatever the repo protects). If the branch does not exist yet, create it
-from the base. Approving the plan authorized local commits on that branch
-only; push, PR, merge, branch deletion and worktree removal stay with the
-user (`skill://finishing-a-development-branch`).
+from the base. Local commits on that branch follow user/repository
+instructions; where those are silent, plan approval authorizes them. Push,
+PR, merge, branch deletion and worktree removal stay with the user
+(`skill://finishing-a-development-branch`).
 
-If the spec and plan are not yet committed, commit them on the task branch
-(plan approval authorized it).
+If the spec and plan are not yet committed, commit them on the task branch.
 
 Work in place. Create a separate worktree only when repo or user
 instructions call for one, or when the current tree holds unrelated

@@ -52,5 +52,5 @@ the record now. Sibling directories belong to other plans; leave them
 alone.
 
 Then read `skill://finishing-a-development-branch` and follow it. Push, merge and
-publish need your human partner's explicit approval; commits on the task
-branch were authorized by plan approval.
+publish need your human partner's explicit approval; local task-branch
+commits do not.

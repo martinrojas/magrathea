@@ -220,10 +220,10 @@ builder check.
 
 **Where it goes:** `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
 in the repo. Your human partner's and the repository's preferences override
-this path. Write the file, but do not commit it unless the user authorized
-commits. Approving the plan later (see `skill://writing-plans`) authorizes
-local commits on the task branch, including this spec. Work on a task
-branch, never the base branch.
+this path. Work on a task branch, never the base branch. Commit the spec
+there if user/repository instructions make task-branch commits the
+default; otherwise leave it uncommitted until plan approval (see
+`skill://writing-plans`) authorizes local commits on the task branch.
 
 **Builder check** (for a project): dispatch the `sp-builder-check` agent
 via `task` with the design doc path. The dispatch is self-contained, since

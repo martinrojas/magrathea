@@ -37,7 +37,7 @@ If test-driven-development or systematic-debugging tells you to ask your human p
 1. Implement exactly what the task specifies
 2. Write tests (TDD is required for plan tasks: `skill://test-driven-development`)
 3. Verify implementation works
-4. Commit your work on the current task branch (plan approval authorized local commits there; never push, merge, or switch branches)
+4. Commit your work on the current task branch (local task-branch commits are part of the workflow; never push, merge, or switch branches)
 5. Self-review (see below)
 6. Report back
 

@@ -65,8 +65,9 @@ touching others via `task.agentModelOverrides` (for example `sp-implementer: "@s
 
 User and repository instructions (AGENTS.md and similar) override these skills.
 
-- **Git:** work happens on a task branch, never the base branch. Every plan header has a `**Git:**` line; approving
-  the plan authorizes local commits on that branch only. Push, PR creation, merge, branch deletion, and worktree
+- **Git:** work happens on a task branch, never the base branch, and is committed locally as it progresses. Every plan
+  header has a `**Git:**` line; if your instructions don't already make task-branch commits the default, approving the
+  plan authorizes them. Push, PR creation, merge, branch deletion, and worktree
   removal each need your explicit choice in `finishing-a-development-branch`. Merges use `git merge --no-ff`; the
   base is synchronized with `git pull --ff-only` when it has an upstream; force-push is never used.
 - **Worktrees:** created only when your instructions call for one or the tree holds unrelated uncommitted work.
