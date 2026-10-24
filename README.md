@@ -1,10 +1,10 @@
-# AI Acceleration OMP marketplace
+# Magrathea
 
-OMP plugin marketplace. Catalog: `.omp-plugin/marketplace.json`.
+Martin Rojas's personal OMP plugin marketplace. Catalog: `.omp-plugin/marketplace.json`.
 
 ```text
 /marketplace add <owner>/<this-repo>
-/marketplace install <plugin>@ai-acceleration
+/marketplace install <plugin>@magrathea
 ```
 
 | Plugin | Description |

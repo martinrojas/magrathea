@@ -9,10 +9,10 @@ work and the most capable model is spent only where judgment matters.
 
 ```text
 /marketplace add <owner>/<marketplace-repo>      # or a local path to the marketplace checkout
-/marketplace install omp-superpowers@ai-acceleration
+/marketplace install omp-superpowers@magrathea
 ```
 
-CLI equivalent: `omp plugin marketplace add <source>` then `omp plugin install omp-superpowers@ai-acceleration`.
+CLI equivalent: `omp plugin marketplace add <source>` then `omp plugin install omp-superpowers@magrathea`.
 Start a new session afterwards; skills and agents are discovered at startup.
 
 Do not install this alongside upstream Superpowers: both ship skills named `brainstorming`, `writing-plans`, etc.,
@@ -77,7 +77,7 @@ User and repository instructions (AGENTS.md and similar) override these skills.
 ## Developing
 
 Marketplace installs run from a cached copy. After editing a local checkout, reinstall with
-`omp plugin install --force omp-superpowers@ai-acceleration` and start a new session.
+`omp plugin install --force omp-superpowers@magrathea` and start a new session.
 
 See [UPSTREAM.md](UPSTREAM.md) for the pinned upstream commit and every deliberate deviation.
 
