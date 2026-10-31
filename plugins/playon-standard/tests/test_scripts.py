@@ -161,5 +161,61 @@ class DetectTest(TempRepo):
         self.assertEqual(d["stack"], ["node"])
 
 
+class NextIdTest(TempRepo):
+    def adr(self, title, *extra):
+        r = run("next_id.py", "adr", title, "--root", self.root, "--date", "2026-01-02", *extra)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return json.loads(r.stdout)
+
+    def test_adr_numbers_files_and_index(self):
+        self.init("decisions")
+        self.assertEqual(self.adr("Use Postgres"), {"id": "ADR-0001", "path": "docs/decisions/0001-use-postgres.md"})
+        self.assertEqual(self.adr("Queue: SQS, not Kafka!")["id"], "ADR-0002")
+        index = (self.root / "docs/decisions/README.md").read_text()
+        self.assertNotIn("_none yet_", index)
+        self.assertIn("| ADR-0001 | Use Postgres | proposed | 2026-01-02 |  |", index)
+        self.assertTrue((self.root / "docs/decisions/0002-queue-sqs-not-kafka.md").exists())
+        record = (self.root / "docs/decisions/0001-use-postgres.md").read_text()
+        self.assertIn("status: proposed", record)
+        self.assertIn("relates_to: []", record)
+        self.assertNotIn("ADR-0000", record)
+
+    def test_supersede_links_both_records_and_validates(self):
+        self.init("product,decisions")
+        self.adr("First")
+        self.adr("Second")
+        self.assertEqual(self.adr("Third", "--supersedes", "ADR-0001")["id"], "ADR-0003")
+        old = (self.root / "docs/decisions/0001-first.md").read_text()
+        self.assertIn("superseded_by: ADR-0003", old)
+        self.assertIn("status: proposed", old)
+        index = (self.root / "docs/decisions/README.md").read_text()
+        self.assertIn("| ADR-0001 | First | proposed | 2026-01-02 | by ADR-0003 |", index)
+        self.assertIn("supersedes ADR-0001 |", index)
+        self.assertIn("supersedes: ADR-0001", (self.root / "docs/decisions/0003-third.md").read_text())
+        v = validate(self.root)
+        self.assertEqual(v.returncode, 0, v.stdout)
+
+    def test_unknown_superseded_record_writes_nothing(self):
+        self.init("decisions")
+        before = (self.root / "docs/decisions/README.md").read_text()
+        r = run("next_id.py", "adr", "X", "--root", self.root, "--supersedes", "ADR-0009")
+        self.assertEqual(r.returncode, 1)
+        self.assertEqual((self.root / "docs/decisions/README.md").read_text(), before)
+        self.assertEqual(len(list((self.root / "docs/decisions").glob("[0-9]*-*.md"))), 1)  # template only
+
+    def test_requires_decisions_index(self):
+        self.assertEqual(run("next_id.py", "adr", "X", "--root", self.root).returncode, 1)
+
+    def test_rule_ids_count_comments_and_start_at_one(self):
+        self.write("docs/rules/x.yaml", "decisions:\n  - id: SD-x-2\nrules:\n  - id: BR-x-1\n  - id: BR-x-3\n"
+                                       "# supersedes: BR-x-4\n# BR-xy-9 is another domain\n")
+        self.assertEqual(run("next_id.py", "br", "x", "--root", self.root).stdout.strip(), "BR-x-5")
+        self.assertEqual(run("next_id.py", "sd", "x", "--root", self.root).stdout.strip(), "SD-x-3")
+        self.assertEqual(run("next_id.py", "sd", "missing", "--root", self.root).stdout.strip(), "SD-missing-1")
+
+    def test_bad_domain_is_usage_error(self):
+        self.assertEqual(run("next_id.py", "br", "Bad-Domain", "--root", self.root).returncode, 2)
+
+
 if __name__ == "__main__":
     unittest.main()
