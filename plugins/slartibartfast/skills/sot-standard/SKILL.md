@@ -1,6 +1,6 @@
 ---
 name: sot-standard
-description: Internal assets for the playon-standard skills — the standard's rules (STANDARD.md), templates, and scripts. Not for direct use.
+description: Internal assets for the slartibartfast skills — the standard's rules (STANDARD.md), templates, and scripts. Not for direct use.
 hide: true
 ---
 

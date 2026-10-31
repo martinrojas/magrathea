@@ -1,6 +1,6 @@
 ---
 name: adopt-standard
-description: Use when a repo adopts the PlayOn Source-of-Truth Standard (AGENTS.md router, PRODUCT.md, ARCHITECTURE.md, docs/decisions, docs/rules) or a monorepo adds a package to it
+description: Use when a repo adopts the Source-of-Truth Standard (AGENTS.md router, PRODUCT.md, ARCHITECTURE.md, docs/decisions, docs/rules) or a monorepo adds a package to it
 ---
 
 # Adopt the Source-of-Truth Standard

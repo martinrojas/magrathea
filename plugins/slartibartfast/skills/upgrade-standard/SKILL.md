@@ -1,6 +1,6 @@
 ---
 name: upgrade-standard
-description: Use when a repo's .sot-standard stamp is older than the installed playon-standard plugin, or when asked to upgrade a repo to a new Source-of-Truth Standard version
+description: Use when a repo's .sot-standard stamp is older than the installed slartibartfast plugin, or when asked to upgrade a repo to a new Source-of-Truth Standard version
 ---
 
 # Upgrade a repo to the installed standard
