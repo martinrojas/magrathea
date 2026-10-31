@@ -31,7 +31,9 @@ LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
 IMPORT = re.compile(r"^@(\S+)\s*$")
 LINE_CITE = re.compile(
     r"\b[\w./-]+\.(?:py|js|ts|tsx|jsx|go|rs|java|rb|php|cs|swift|kt|md):\d+\b|#L\d+\b")
-PLACEHOLDER = re.compile(r"<[A-Za-z/][^<>\n]*>|YYYY-MM-DD")
+# A placeholder is `<name>` outside URL/path/generic positions, or a date field left as YYYY-MM-DD.
+PLACEHOLDER = re.compile(r"(?<![=?&/\w])<[A-Za-z/][^<>\n]*>|:\s*YYYY-MM-DD\s*(?:#.*)?$")
+INFERRED = "(inferred, not verified)"
 RESOLUTIONS = {"unique", "first", "priority", "collect"}
 PRIORITIES = {"must", "should"}
 DOMAIN = re.compile(r"^[a-z][a-z0-9_]*$")
@@ -344,11 +346,18 @@ def check_placeholders(root, files):
     for p in files:
         if is_template(p) or p.name == "README.md":
             continue
-        text = re.sub(r"<!--.*?-->", "", p.read_text(encoding="utf-8"), flags=re.S)
+        # Blank comments but keep their newlines so reported line numbers stay true.
+        text = re.sub(r"<!--.*?-->", lambda m: "\n" * m.group().count("\n"),
+                      p.read_text(encoding="utf-8"), flags=re.S)
         hits = [n for n, line in body_lines(text) if PLACEHOLDER.search(line)]
         if hits:
-            err(p.relative_to(root), f"{len(hits)} unfilled placeholder line(s), "
-                                     f"first at line {hits[0]}")
+            err(p.relative_to(root), f"{len(hits)} unfilled placeholder line(s) at "
+                                     f"{', '.join(map(str, hits))}")
+
+
+def count_inferred(files):
+    return sum(p.read_text(encoding="utf-8").count(INFERRED)
+               for p in files if not is_template(p) and p.name != "README.md")
 
 
 def main():
@@ -371,7 +380,8 @@ def main():
     for line in warnings + errors:
         print(line)
     print(f"\n{len(files)} files scanned, {len(ids)} IDs defined, "
-          f"{len(errors)} error(s), {len(warnings)} warning(s)")
+          f"{len(errors)} error(s), {len(warnings)} warning(s), "
+          f"{count_inferred(files)} unverified claim(s) marked {INFERRED}")
     sys.exit(1 if errors else 0)
 
 

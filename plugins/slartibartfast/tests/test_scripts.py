@@ -59,9 +59,13 @@ class InitTest(TempRepo):
         v = validate(self.root)
         self.assertEqual(v.returncode, 0, v.stdout)
 
-    def test_ui_keeps_design_row(self):
-        self.init("ui")
+    def test_ui_writes_design_template_and_keeps_row(self):
+        out = self.init("ui")
+        self.assertIn("DESIGN.md", out["created"])
         self.assertIn("DESIGN.md`](./DESIGN.md)", (self.root / "AGENTS.md").read_text())
+        v = validate(self.root)
+        self.assertEqual(v.returncode, 0, v.stdout)
+        self.assertNotIn("link target not found", v.stdout)
 
     def test_unknown_token_is_usage_error(self):
         self.assertEqual(run("scaffold.py", "init", self.root, "--with", "nope").returncode, 2)
@@ -89,6 +93,25 @@ class PackageTest(TempRepo):
         self.init("")
         self.assertEqual(run("scaffold.py", "package", "..", "--root", self.root).returncode, 2)
         self.assertEqual(run("scaffold.py", "package", "missing", "--root", self.root).returncode, 2)
+
+
+class StrictPlaceholderTest(TempRepo):
+    def test_urls_and_date_formats_are_not_placeholders(self):
+        self.write("AGENTS.md", "# AGENTS.md\n\nShare as `/about?key=<value>`; plans carry `Last updated: YYYY-MM-DD` "
+                                "and live in `a/<domain>.yaml`.\n")
+        r = run("validate_standard.py", self.root, "--strict")
+        self.assertEqual(r.returncode, 0, r.stdout)
+
+    def test_real_placeholders_are_flagged(self):
+        self.write("AGENTS.md", "# AGENTS.md\n\n- Test: `<command>`\n- ok\n- Run: `<other>`\n")
+        self.write("PRODUCT.md", "---\nname: x\nlast_reviewed: YYYY-MM-DD\n---\n\n# x\n")
+        r = run("validate_standard.py", self.root, "--strict")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("2 unfilled placeholder line(s) at 3, 5", r.stdout)
+
+    def test_summary_counts_inferred_claims(self):
+        self.write("AGENTS.md", "# AGENTS.md\n\nA (inferred, not verified)\nB (inferred, not verified)\n")
+        self.assertIn("2 unverified claim(s)", run("validate_standard.py", self.root).stdout)
 
 
 class UpgradeTest(TempRepo):
