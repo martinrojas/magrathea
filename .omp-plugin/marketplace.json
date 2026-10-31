@@ -20,7 +20,7 @@
       "name": "slartibartfast",
       "source": "./plugins/slartibartfast",
       "description": "Source-of-Truth Standard: adopt it, keep grounding docs in sync, record decisions and domain rules, upgrade it",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "category": "development",
       "tags": ["documentation", "standards", "agents-md", "adr", "business-rules"]
     }
