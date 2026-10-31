@@ -17,8 +17,9 @@ only drives the scripts. Run everything from the repo root, on a task branch (ne
    - `software` → `product,architecture,decisions`
    - `monorepo` → the software set at the root
    - `docs` → empty
-   Add `ui` if `ui` is true: it writes a `DESIGN.md` template. Fill tokens and components from the styles in code;
-   leave anything unknown as a Q-row in its §4 rather than guessing.
+   Add `ui` if `ui` is true: it writes a `DESIGN.md` template in the Google DESIGN.md format
+   (https://github.com/google-labs-code/design.md). Fill tokens and components from the styles in code, keep the
+   section order, and drop unknown groups into `omitted:`. Put anything undecided in prose rather than guessing.
 3. Scaffold: `python3 skill://sot-standard/scripts/scaffold.py init . --with <csv>`
    - Monorepo: for each package the engineer selects, `scaffold.py package <dir>`.
    - `skipped` lists files that already existed. Reconcile a skipped `AGENTS.md`/`CLAUDE.md` by hand: move durable
@@ -36,7 +37,11 @@ only drives the scripts. Run everything from the repo root, on a task branch (ne
 6. Validate: `python3 skill://sot-standard/scripts/validate_standard.py .` for 0 errors, then again with `--strict`.
    The summary line counts the claims still marked "(inferred, not verified)"; report that number. A strict hit on
    text that is not a placeholder (a URL, a date format) is a validator bug: report it, do not rewrite the text.
-7. Offer to add `python3 scripts/validate_standard.py .` to the repo's lint or CI command; do not add it unasked.
+   If `ui` is set and Node is available, also run `npx @google/design.md@0.4.0 lint DESIGN.md` (format is alpha; pin
+   the version). Fix `broken-ref` errors; report warnings (contrast, section order, missing primary) without
+   rewriting the design to silence them.
+7. Offer to add `python3 scripts/validate_standard.py .` (and, with `ui`, the pinned `design.md lint` command, which
+   needs Node and network) to the repo's lint or CI command; do not add either unasked.
    Commit on the task branch and offer to open the PR. Push only when asked.
 
 ## Never

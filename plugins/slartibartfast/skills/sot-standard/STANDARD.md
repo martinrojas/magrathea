@@ -18,7 +18,7 @@ is small, each file owns one kind of truth, and everything is lean.
 | `AGENTS.md` | Core | Router: grounding docs, precedence, commands, conventions, done |
 | `PRODUCT.md` | Core | Why: purpose, users, goals, non-goals, core terms, cross-domain constraints, and a map of where product truth lives per domain |
 | `docs/rules/<domain>.yaml` | On demand | Business rules for one domain, written when agents change its logic and intent is not in the code |
-| `DESIGN.md` | Core if UI | Visual system |
+| `DESIGN.md` | Core if UI | Visual system, in the [Google DESIGN.md format](https://github.com/google-labs-code/design.md): YAML tokens plus rationale prose |
 | `ARCHITECTURE.md` | As needed | Non-inferable technical context: boundaries, constraints, risky flows, oddities, risks |
 | `docs/decisions/` | As needed | One record per significant choice, with status |
 | `docs/guides/` | On demand | Runbooks |
@@ -94,5 +94,6 @@ Move, do not delete: keep durable content, drop only what code now shows.
 
 1. Copy the files you need; fill placeholders; delete sections that do not apply.
 2. Remove the `AGENTS.md` rows for files you skip.
-3. Run `python3 scripts/validate_standard.py` from the repo root.
+3. Run `python3 scripts/validate_standard.py` from the repo root. If you keep `DESIGN.md`, also run
+   `npx @google/design.md lint DESIGN.md`: the standard's validator stays offline and does not check design tokens.
 4. Keep it current: change a file in the same PR as the behavior it describes.
