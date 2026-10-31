@@ -40,6 +40,7 @@ OPTIONAL_TARGETS = {"DESIGN.md", "context.yaml"}
 SCAN_NAMES = {"AGENTS.md", "CLAUDE.md", "PRODUCT.md", "DESIGN.md",
               "ARCHITECTURE.md", "REVIEW.md"}
 SCAN_DIRS = ("decisions", "rules", "guides", "reviews")
+STAMP = re.compile(r"^\d+\.\d+\.\d+$")
 
 errors, warnings = [], []
 
@@ -395,8 +396,6 @@ def check_basics(root, budget):
             err("AGENTS.md", f"{n} lines; hard limit {int(budget * 1.5)}. Move detail out")
         elif n > budget:
             warn("AGENTS.md", f"{n} lines; target is about {budget}")
-    if not (root / "PRODUCT.md").exists():
-        err("PRODUCT.md", "missing (core file)")
     claude = root / "CLAUDE.md"
     if claude.exists() and claude.read_text(encoding="utf-8").strip() != "@AGENTS.md":
         err("CLAUDE.md", "must contain only the line: @AGENTS.md")
@@ -404,6 +403,16 @@ def check_basics(root, budget):
         p = root / name
         if p.exists() and "last_reviewed" not in front_matter(p.read_text(encoding="utf-8")):
             warn(name, "front matter has no last_reviewed")
+
+
+def check_stamp(root):
+    p = root / ".sot-standard"
+    if not p.exists():
+        warn(".sot-standard", "missing version stamp; adopt-standard writes it")
+        return
+    text = p.read_text(encoding="utf-8").strip()
+    if not STAMP.match(text):
+        err(".sot-standard", f"must hold one version like 0.1.0 (got {text!r})")
 
 
 def check_placeholders(root, files):
@@ -426,6 +435,7 @@ def main():
     root = Path(a.root).resolve()
     files = walk_docs(root)
     check_basics(root, a.budget)
+    check_stamp(root)
     check_links(root, files)
     rules_ids = check_rules_yaml(root, files)
     ids = check_ids(root, files, rules_ids)
