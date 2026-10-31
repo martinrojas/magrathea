@@ -46,9 +46,6 @@ External systems, what we depend on, and the failure behavior we expect.
 |--------|----------|------------|------------------------------------------------------------|
 | <service/API> | <purpose> | <retry / degrade / stop> | <what surprises people> |
 
-Related repos a change here can break are listed once, in `context.yaml`
-(repo, paths, why). Do not restate them here; add a row there.
-
 ## 6. Deliberate oddities and gotchas
 Code that looks wrong but is intentional, and traps that have burned us.
 Each points to the decision or incident that explains it.

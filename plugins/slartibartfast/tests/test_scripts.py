@@ -45,7 +45,6 @@ class InitTest(TempRepo):
         rows = [l for l in text.splitlines() if l.startswith("| ")]
         for gone in ("PRODUCT.md", "DESIGN.md", "ARCHITECTURE.md", "docs/decisions", "docs/rules"):
             self.assertFalse([r for r in rows if gone in r], gone)
-        self.assertNotIn("## 7. Code Review", text)
         self.assertIn("## 7. Definition of done", text)
         self.assertNotIn("## 8.", text)
         # the vendored copy, as CI in an adopting repo runs it
@@ -53,32 +52,16 @@ class InitTest(TempRepo):
                            capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stdout)
 
-    def test_full_software_set_without_context(self):
-        self.init("product,architecture,decisions,review")
+    def test_full_software_set_validates(self):
+        self.init("product,architecture,decisions")
         agents = (self.root / "AGENTS.md").read_text()
-        self.assertIn("## 7. Code Review", agents)
-        self.assertNotIn("Companion repos a reviewer needs", agents)
-        self.assertNotIn("`context.yaml`", (self.root / "REVIEW.md").read_text())
-        self.assertNotIn("context.yaml", (self.root / "ARCHITECTURE.md").read_text())
         self.assertNotIn("DESIGN.md`](./DESIGN.md)", agents)
         v = validate(self.root)
         self.assertEqual(v.returncode, 0, v.stdout)
 
-    def test_context_set_keeps_context_text(self):
-        self.init("review,context")
-        self.assertIn("Companion repos a reviewer needs", (self.root / "AGENTS.md").read_text())
-        self.assertTrue((self.root / "context.yaml").exists())
-        self.assertEqual(validate(self.root).returncode, 0)
-
     def test_ui_keeps_design_row(self):
         self.init("ui")
         self.assertIn("DESIGN.md`](./DESIGN.md)", (self.root / "AGENTS.md").read_text())
-
-    def test_context_without_review_is_usage_error(self):
-        r = run("scaffold.py", "init", self.root, "--with", "context")
-        self.assertEqual(r.returncode, 2)
-        self.assertIn("context requires review", r.stderr)
-        self.assertEqual(list(self.root.iterdir()), [])
 
     def test_unknown_token_is_usage_error(self):
         self.assertEqual(run("scaffold.py", "init", self.root, "--with", "nope").returncode, 2)
@@ -94,21 +77,13 @@ class InitTest(TempRepo):
 
 class PackageTest(TempRepo):
     def test_package_files_import_root_by_depth(self):
-        self.init("review")
+        self.init("")
         (self.root / "packages" / "api").mkdir(parents=True)
-        r = run("scaffold.py", "package", "packages/api", "--root", self.root, "--review")
+        r = run("scaffold.py", "package", "packages/api", "--root", self.root)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual((self.root / "packages/api/AGENTS.md").read_text().splitlines()[0], "@../../AGENTS.md")
-        self.assertEqual((self.root / "packages/api/REVIEW.md").read_text().splitlines()[0], "@../../REVIEW.md")
         v = validate(self.root)
         self.assertEqual(v.returncode, 0, v.stdout)
-
-    def test_review_requires_root_review_md(self):
-        self.init("")
-        (self.root / "pkg").mkdir()
-        r = run("scaffold.py", "package", "pkg", "--root", self.root, "--review")
-        self.assertEqual(r.returncode, 1)
-        self.assertFalse((self.root / "pkg/AGENTS.md").exists())
 
     def test_package_outside_root_is_usage_error(self):
         self.init("")

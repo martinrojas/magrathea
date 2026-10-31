@@ -36,10 +36,9 @@ RESOLUTIONS = {"unique", "first", "priority", "collect"}
 PRIORITIES = {"must", "should"}
 DOMAIN = re.compile(r"^[a-z][a-z0-9_]*$")
 STATUSES = {"proposed", "accepted", "rejected", "superseded", "deprecated"}
-OPTIONAL_TARGETS = {"DESIGN.md", "context.yaml"}
-SCAN_NAMES = {"AGENTS.md", "CLAUDE.md", "PRODUCT.md", "DESIGN.md",
-              "ARCHITECTURE.md", "REVIEW.md"}
-SCAN_DIRS = ("decisions", "rules", "guides", "reviews")
+OPTIONAL_TARGETS = {"DESIGN.md"}
+SCAN_NAMES = {"AGENTS.md", "CLAUDE.md", "PRODUCT.md", "DESIGN.md", "ARCHITECTURE.md"}
+SCAN_DIRS = ("decisions", "rules", "guides")
 STAMP = re.compile(r"^\d+\.\d+\.\d+$")
 
 errors, warnings = [], []
@@ -312,80 +311,6 @@ def check_adrs(root, files):
             err(rel, f"not listed in docs/decisions/README.md index ({adr})")
 
 
-def check_review_bridge(root, files):
-    agents = root / "AGENTS.md"
-    if not agents.exists():
-        return
-    text = agents.read_text(encoding="utf-8")
-    has_heading = re.search(r"^##\s+(?:\d+\.\s*)?Code Review", text, re.M)
-    if (root / "REVIEW.md").exists() and not has_heading:
-        warn("AGENTS.md", "REVIEW.md exists but AGENTS.md has no 'Code Review' heading")
-    if has_heading and not (root / "REVIEW.md").exists():
-        err("AGENTS.md", "'Code Review' heading points at a missing REVIEW.md")
-    if (root / "context.yaml").exists() and "context.yaml" not in text:
-        warn("AGENTS.md", "context.yaml exists but AGENTS.md does not mention it "
-                          "(automated reviewers read only AGENTS.md)")
-
-
-REPO_SLUG = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
-
-
-def check_context_yaml(root, strict):
-    """context.yaml: version 0, a list of companion repos with paths and entry."""
-    p = root / "context.yaml"
-    if not p.exists():
-        return
-    rel = "context.yaml"
-    text = p.read_text(encoding="utf-8")
-    if yaml is None:
-        warn(rel, "PyYAML not installed; context.yaml not checked (pip install pyyaml)")
-        return
-    try:
-        doc = yaml.safe_load(text) or {}
-    except yaml.YAMLError as e:  # type: ignore[attr-defined]
-        err(rel, f"YAML parse error: {str(e).splitlines()[0]}")
-        return
-    if not isinstance(doc, dict):
-        err(rel, "top level must be a mapping")
-        return
-    if doc.get("version") != 0:
-        err(rel, f"version must be 0 (got {doc.get('version')!r})")
-    sources = doc.get("context")
-    if not isinstance(sources, list) or not sources:
-        err(rel, "context must be a non-empty list; delete the file if there is "
-                 "no companion repo")
-        return
-    seen = set()
-    for i, s in enumerate(sources, 1):
-        tag = f"context[{i}]"
-        if not isinstance(s, dict):
-            err(rel, f"{tag}: entry is not a mapping")
-            continue
-        repo = str(s.get("repo", ""))
-        placeholder = repo.startswith("<")
-        if placeholder and strict:
-            err(rel, f"{tag}: repo is an unfilled placeholder")
-        elif not placeholder and not REPO_SLUG.match(repo):
-            err(rel, f"{tag}: repo must be org/name (got {repo!r})")
-        if repo in seen:
-            err(rel, f"{tag}: duplicate repo {repo}")
-        seen.add(repo)
-        paths = s.get("paths")
-        if not isinstance(paths, list) or not paths:
-            err(rel, f"{tag}: paths must be a non-empty list")
-            paths = []
-        for key in ("name", "why"):
-            if not s.get(key):
-                warn(rel, f"{tag}: missing {key}")
-        entry = s.get("entry")
-        if entry and not str(entry).startswith("<") and paths \
-                and not any(str(entry).startswith(str(x).rstrip("/")) for x in paths):
-            warn(rel, f"{tag}: entry {entry!r} is not under any listed path")
-        for key in s:
-            if key not in {"name", "repo", "paths", "exclude", "entry", "why", "search"}:
-                warn(rel, f"{tag}: unknown key {key!r}")
-
-
 def check_basics(root, budget):
     agents = root / "AGENTS.md"
     if not agents.exists():
@@ -441,8 +366,6 @@ def main():
     ids = check_ids(root, files, rules_ids)
     check_rules_map(root)
     check_adrs(root, files)
-    check_review_bridge(root, files)
-    check_context_yaml(root, a.strict)
     if a.strict:
         check_placeholders(root, files)
     for line in warnings + errors:

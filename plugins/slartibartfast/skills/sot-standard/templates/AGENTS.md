@@ -95,19 +95,7 @@ Important files (entry points and config; keep to a handful):
 - Never print secrets (name the mechanism, not the value). Use synthetic data
   in fixtures, docs, and examples.
 
-## 7. Code Review
-
-Automated reviewers inject this file (plus any `AGENTS.md` on the changed path)
-and nothing else, so list here the invariants a reviewer must check in this
-repo, as concrete statements, not rules about severity or format:
-
-- <invariant, e.g. "Money is integer cents; a float in a payment path is a defect">
-- <never flag, e.g. "generated files under `gen/`">
-
-Severities, what counts as a finding, and the full policy: [`REVIEW.md`](./REVIEW.md).
-Companion repos a reviewer needs: `context.yaml`.
-
-## 8. Definition of done
+## 7. Definition of done
 
 - Behavior matches the domain's rules; each rule's example has a test.
 - UI follows `DESIGN.md`; boundaries and accepted decisions are respected.
