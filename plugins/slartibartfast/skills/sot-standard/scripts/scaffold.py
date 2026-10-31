@@ -27,7 +27,7 @@ FILES = {
     "product": ["PRODUCT.md", "docs/rules/TEMPLATE.yaml"],
     "architecture": ["ARCHITECTURE.md"],
     "decisions": ["docs/decisions/README.md", "docs/decisions/0000-template.md"],
-    "ui": [],
+    "ui": ["DESIGN.md"],
 }
 # AGENTS.md section 1 rows, by line prefix, kept only when their token is present.
 AGENTS_ROWS = {

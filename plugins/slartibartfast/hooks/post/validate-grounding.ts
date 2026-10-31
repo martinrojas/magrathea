@@ -34,7 +34,7 @@ export default function (pi: ExtensionAPI) {
 				if (run.exitCode !== 1) continue;
 				const errors = run.stdout.toString().split("\n").filter(line => line.startsWith("ERROR"));
 				if (errors.length) {
-					reports.push(`validate_standard.py: errors after editing grounding docs in ${root}:\n${errors.join("\n")}\nFix them before continuing.`);
+					reports.push(`[slartibartfast hook] Automatic check, not a user message: validate_standard.py found errors after you edited grounding docs in ${root}:\n${errors.join("\n")}\nFix them before continuing.`);
 				}
 			}
 			return reports.length ? { additionalContext: reports.join("\n\n") } : undefined;
