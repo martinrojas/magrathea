@@ -17,8 +17,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT_DOCS = ["AGENTS.md", "PRODUCT.md", "DESIGN.md", "ARCHITECTURE.md", "REVIEW.md", "context.yaml"]
-DOC_DIRS = {"decisions", "rules", "guides", "reviews"}
+ROOT_DOCS = ["AGENTS.md", "PRODUCT.md", "DESIGN.md", "ARCHITECTURE.md"]
+DOC_DIRS = {"decisions", "rules", "guides"}
 SKIP_DIRS = {"node_modules", "venv", "dist", "build", "vendor"}
 COMMAND_FILES = {"package.json", "Makefile", "justfile", "Taskfile.yml", "pyproject.toml", "setup.cfg",
                  "Cargo.toml", "go.mod", ".nvmrc", ".node-version", ".python-version", ".tool-versions",

@@ -39,12 +39,10 @@ LOCKFILES = [
     ("pipenv", ["Pipfile.lock"]),
 ]
 RUNTIME_FILES = [".nvmrc", ".node-version", ".python-version", ".tool-versions"]
-EXISTING = ["AGENTS.md", "CLAUDE.md", "PRODUCT.md", "DESIGN.md", "ARCHITECTURE.md",
-            "REVIEW.md", "context.yaml", ".sot-standard",
+EXISTING = ["AGENTS.md", "CLAUDE.md", "PRODUCT.md", "DESIGN.md", "ARCHITECTURE.md", ".sot-standard",
             "scripts/validate_standard.py", "docs/decisions/README.md"]
 SOURCE_CAP = 5000
 MAKE_TARGET = re.compile(r"^([A-Za-z0-9_.-]+):(?!=)")
-REVIEW_HEADING = re.compile(r"^##\s+(?:\d+\.\s*)?Code Review", re.M)
 REMOTE = re.compile(r"[:/]([^/:]+/[^/]+?)(?:\.git)?/?$")
 
 
@@ -192,11 +190,6 @@ def main():
 
     packages = expand(root, workspace_patterns(root, pkg))
 
-    reviewed = [f for f in ("REVIEW.md", "context.yaml") if (root / f).exists()]
-    agents = root / "AGENTS.md"
-    if agents.exists() and REVIEW_HEADING.search(agents.read_text(encoding="utf-8", errors="replace")):
-        reviewed.append("AGENTS.md Code Review section")
-
     existing = [f for f in EXISTING if (root / f).exists()]
     rules = sorted((root / "docs" / "rules").glob("*.yaml")) if (root / "docs" / "rules").is_dir() else []
     existing += [p.relative_to(root).as_posix() for p in rules]
@@ -222,7 +215,6 @@ def main():
         "packages": packages,
         "ui": bool(ui_evidence),
         "ui_evidence": ui_evidence,
-        "reviewed_evidence": reviewed,
         "existing": existing,
         "claude_md_is_shim": shim,
         "source_files": source_files,
