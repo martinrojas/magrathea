@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 const VALIDATOR = path.join(import.meta.dir, "..", "..", "skills", "sot-standard", "scripts", "validate_standard.py");
-const NAMES = new Set(["AGENTS.md", "CLAUDE.md", "PRODUCT.md", "DESIGN.md", "ARCHITECTURE.md", ".sot-standard"]);
+const NAMES = new Set(["AGENTS.md", "CLAUDE.md", "PRODUCT.md", "DESIGN.md", "ARCHITECTURE.md", "CHANGELOG.md", ".sot-standard"]);
 const DOC_DIR = /(^|\/)docs\/(decisions|rules|guides)\//;
 
 /** Nearest ancestor directory holding `.sot-standard`, or undefined when the repo has not adopted the standard. */
