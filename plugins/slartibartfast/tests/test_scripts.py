@@ -38,6 +38,10 @@ class TempRepo(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         return json.loads(r.stdout)
 
+    def git(self, *args):
+        return subprocess.run(["git", "-C", str(self.root), "-c", "user.name=t", "-c", "user.email=t@t", *args],
+                              check=True, capture_output=True)
+
 
 class ChangelogTest(TempRepo):
     def check(self, log, files=None):
@@ -292,6 +296,20 @@ class DetectTest(TempRepo):
         d = json.loads(run("detect.py", self.root).stdout)
         self.assertEqual(len(d["errors"]), 1)
         self.assertEqual(d["stack"], ["node"])
+        self.assertIsNone(d["manifest_version"])
+
+    def test_changelog_manifest_version_and_history(self):
+        self.write("CHANGELOG.md", "# C\n")
+        self.write("package.json", '{"version": "0.2.0"}')
+        d = json.loads(run("detect.py", self.root).stdout)
+        self.assertIn("CHANGELOG.md", d["existing"])
+        self.assertEqual(d["manifest_version"], {"file": "package.json", "version": "0.2.0"})
+        self.assertFalse(d["git_has_commits"])
+        self.git("init", "-q", "-b", "main")
+        self.assertFalse(json.loads(run("detect.py", self.root).stdout)["git_has_commits"])
+        self.git("add", "-A")
+        self.git("commit", "-qm", "init")
+        self.assertTrue(json.loads(run("detect.py", self.root).stdout)["git_has_commits"])
 
 
 class NextIdTest(TempRepo):
@@ -398,11 +416,9 @@ class DocMapTest(TempRepo):
         self.assertEqual(list(o), ["packages/api/AGENTS.md"])
 
     def test_git_changes_are_used_without_paths(self):
-        git = lambda *a: subprocess.run(["git", "-C", str(self.root), "-c", "user.name=t", "-c", "user.email=t@t", *a],
-                                        check=True, capture_output=True)
-        git("init", "-q", "-b", "main")
-        git("add", "-A")
-        git("commit", "-qm", "init")
+        self.git("init", "-q", "-b", "main")
+        self.git("add", "-A")
+        self.git("commit", "-qm", "init")
         self.write("src/scanner/new.ts", "")
         d, o = self.doc_map()
         self.assertEqual(d["changed"], ["src/scanner/new.ts"])

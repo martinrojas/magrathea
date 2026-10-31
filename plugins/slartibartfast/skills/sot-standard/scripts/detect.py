@@ -14,6 +14,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from validate_standard import manifest_version
+
 SKIP_DIRS = {".git", "node_modules", "dist", "build", "vendor", "venv", ".venv"}
 CODE_EXTS = {"py", "js", "ts", "tsx", "jsx", "go", "rs", "java", "kt", "rb", "php",
              "cs", "swift", "tf", "vue", "svelte"}
@@ -39,8 +41,8 @@ LOCKFILES = [
     ("pipenv", ["Pipfile.lock"]),
 ]
 RUNTIME_FILES = [".nvmrc", ".node-version", ".python-version", ".tool-versions"]
-EXISTING = ["AGENTS.md", "CLAUDE.md", "PRODUCT.md", "DESIGN.md", "ARCHITECTURE.md", ".sot-standard",
-            "scripts/validate_standard.py", "docs/decisions/README.md"]
+EXISTING = ["AGENTS.md", "CLAUDE.md", "PRODUCT.md", "DESIGN.md", "ARCHITECTURE.md", "CHANGELOG.md",
+            ".sot-standard", "scripts/validate_standard.py", "docs/decisions/README.md"]
 SOURCE_CAP = 5000
 MAKE_TARGET = re.compile(r"^([A-Za-z0-9_.-]+):(?!=)")
 REMOTE = re.compile(r"[:/]([^/:]+/[^/]+?)(?:\.git)?/?$")
@@ -62,6 +64,15 @@ def git_remote(root):
         return None
     m = REMOTE.search(out)
     return m.group(1) if m else None
+
+
+def git_has_commits(root):
+    try:
+        r = subprocess.run(["git", "-C", str(root), "rev-parse", "--verify", "--quiet", "HEAD"],
+                           capture_output=True, timeout=10)
+        return r.returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
 
 
 def walk(root):
@@ -204,10 +215,14 @@ def main():
         size = "small"
     else:
         size = "software"
+    mv = manifest_version(root)
+    manifest_ver = {"file": mv[0], "version": mv[1]} if mv else None
+
 
     print(json.dumps({
         "root": str(root),
         "git_remote": git_remote(root),
+        "git_has_commits": git_has_commits(root),
         "stack": sorted(stack),
         "package_manager": [n for n, marks in LOCKFILES if any((root / m).exists() for m in marks)],
         "runtime": runtime,
@@ -219,6 +234,7 @@ def main():
         "claude_md_is_shim": shim,
         "source_files": source_files,
         "suggested_size": size,
+        "manifest_version": manifest_ver,
         "errors": errors,
     }))
 
