@@ -1,7 +1,7 @@
 ---
 version: alpha
 name: <Product name>
-description: <One line: the look and feel>
+description: <One line on the look and feel>
 colors:
   primary: "<#RRGGBB>"
   secondary: "<#RRGGBB>"

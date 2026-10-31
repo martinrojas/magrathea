@@ -67,6 +67,12 @@ class InitTest(TempRepo):
         self.assertEqual(v.returncode, 0, v.stdout)
         self.assertNotIn("link target not found", v.stdout)
 
+    def test_ui_template_is_flagged_as_unfilled_under_strict(self):
+        self.init("ui")
+        v = run("validate_standard.py", self.root, "--strict")
+        self.assertEqual(v.returncode, 1, v.stdout)
+        self.assertRegex(v.stdout, r"ERROR\s+DESIGN\.md: \d+ unfilled placeholder")
+
     def test_unknown_token_is_usage_error(self):
         self.assertEqual(run("scaffold.py", "init", self.root, "--with", "nope").returncode, 2)
 
