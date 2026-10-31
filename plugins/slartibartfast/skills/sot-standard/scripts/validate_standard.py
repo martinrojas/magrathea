@@ -10,6 +10,7 @@ Stdlib only, except that full checking of docs/rules/*.yaml needs PyYAML
 (pip install pyyaml). Without it, rules files get a reduced regex check.
 """
 import argparse
+import datetime
 import os
 import re
 import sys
@@ -42,6 +43,8 @@ OPTIONAL_TARGETS = {"DESIGN.md"}
 SCAN_NAMES = {"AGENTS.md", "CLAUDE.md", "PRODUCT.md", "DESIGN.md", "ARCHITECTURE.md", "CHANGELOG.md"}
 SCAN_DIRS = ("decisions", "rules", "guides")
 STAMP = re.compile(r"^\d+\.\d+\.\d+$")
+SEMVER_CORE = r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)"
+VERSION_HEADING = re.compile(rf"^## \[({SEMVER_CORE})\] - (\d{{4}}-\d{{2}}-\d{{2}})$")
 
 errors, warnings = [], []
 
@@ -332,6 +335,49 @@ def check_basics(root, budget):
             warn(name, "front matter has no last_reviewed")
 
 
+def check_changelog(root):
+    path = root / "CHANGELOG.md"
+    if not path.exists():
+        err("CHANGELOG.md", "missing (core file)")
+        return
+    text = path.read_text(encoding="utf-8")
+    sections = []
+    for n, line in body_lines(text):
+        if line.startswith("## "):
+            sections.append([n, line, []])
+        elif sections:
+            sections[-1][2].append((n, line))
+    if not sections:
+        err("CHANGELOG.md", "first ## heading must be [Unreleased]")
+        return
+    if sections[0][1].rstrip() != "## [Unreleased]":
+        err("CHANGELOG.md", "first ## heading must be [Unreleased]")
+    seen_versions = set()
+    prev_ver = None
+    prev_ver_str = None
+    released_sections = []
+    for n, line, body in sections[1:]:
+        m = VERSION_HEADING.match(line.rstrip())
+        if not m:
+            err("CHANGELOG.md", f"line {n}: version heading must be '## [x.y.z] - YYYY-MM-DD'")
+            continue
+        ver_str, date_str = m.group(1), m.group(2)
+        try:
+            datetime.date.fromisoformat(date_str)
+        except ValueError:
+            err("CHANGELOG.md", f"line {n}: invalid date {date_str}")
+        ver_tuple = tuple(int(x) for x in ver_str.split("."))
+        if ver_tuple in seen_versions:
+            err("CHANGELOG.md", f"line {n}: duplicate version {ver_str}")
+        elif prev_ver is not None and ver_tuple >= prev_ver:
+            err("CHANGELOG.md", f"line {n}: {ver_str} is not below {prev_ver_str}; versions must be newest first")
+        else:
+            prev_ver = ver_tuple
+            prev_ver_str = ver_str
+        seen_versions.add(ver_tuple)
+        released_sections.append((n, ver_str, ver_tuple, body))
+
+
 def check_stamp(root):
     p = root / ".sot-standard"
     if not p.exists():
@@ -369,6 +415,7 @@ def main():
     root = Path(a.root).resolve()
     files = walk_docs(root)
     check_basics(root, a.budget)
+    check_changelog(root)
     check_stamp(root)
     check_links(root, files)
     rules_ids = check_rules_yaml(root, files)

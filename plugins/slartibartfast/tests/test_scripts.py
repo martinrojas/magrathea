@@ -16,6 +16,10 @@ def run(script, *args, cwd=None):
 def validate(root):
     return run("validate_standard.py", root)
 
+VALID_LOG = ("# Changelog\n\nPublic interface: the `tool` CLI.\n\n## [Unreleased]\n\n"
+             "## [1.1.0] - 2026-02-01\n\n### Added\n\n- A flag.\n\n"
+             "## [1.0.0] - 2026-01-01\n\nBaseline: changes before this changelog were not tracked.\n")
+
 
 class TempRepo(unittest.TestCase):
     def setUp(self):
@@ -33,6 +37,68 @@ class TempRepo(unittest.TestCase):
         r = run("scaffold.py", "init", self.root, "--with", with_)
         self.assertEqual(r.returncode, 0, r.stderr)
         return json.loads(r.stdout)
+
+
+class ChangelogTest(TempRepo):
+    def check(self, log, files=None):
+        self.write("AGENTS.md", "# AGENTS.md\n")
+        if log is not None:
+            self.write("CHANGELOG.md", log)
+        for rel, text in (files or {}).items():
+            self.write(rel, text)
+        r = validate(self.root)
+        self.assertNotIn("Traceback", r.stderr)
+        return r
+
+    def test_valid_changelog_passes(self):
+        r = self.check(VALID_LOG)
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertNotIn("CHANGELOG.md", r.stdout)
+
+    def test_missing_changelog_errors_at_any_stamp(self):
+        for stamp in (None, "0.3.0\n"):  # no stamp gate: below 0.4.0 still errors
+            if stamp:
+                self.write(".sot-standard", stamp)
+            r = self.check(None)
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("ERROR   CHANGELOG.md: missing (core file)", r.stdout)
+
+    def test_first_heading_must_be_unreleased(self):
+        for log in ("# Changelog\n", "# Changelog\n\n## [1.0.0] - 2026-01-01\n\n- x\n"):
+            r = self.check(log)
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("ERROR   CHANGELOG.md: first ## heading must be [Unreleased]", r.stdout)
+
+    def test_malformed_version_headings(self):
+        r = self.check("# C\n\n## [Unreleased]\n\n## v1.2.0 (2020-01-01)\n\n- a\n\n## [1.0] - 2020-01-01\n\n- b\n\n"
+                       "## [01.0.0] - 2020-01-01\n\n- c\n\n## [1.0.0]\n\n- d\n")
+        self.assertEqual(r.returncode, 1)
+        for n in (5, 9, 13, 17):
+            self.assertIn(f"CHANGELOG.md: line {n}: version heading must be '## [x.y.z] - YYYY-MM-DD'", r.stdout)
+
+    def test_invalid_calendar_date(self):
+        r = self.check("# C\n\n## [Unreleased]\n\n## [1.0.0] - 2026-02-30\n\n- x\n")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("CHANGELOG.md: line 5: invalid date 2026-02-30", r.stdout)
+
+    def test_duplicate_version(self):
+        r = self.check("# C\n\n## [Unreleased]\n\n## [1.0.0] - 2026-01-02\n\n- x\n\n## [1.0.0] - 2026-01-01\n\n- y\n")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("CHANGELOG.md: line 9: duplicate version 1.0.0", r.stdout)
+        self.assertNotIn("newest first", r.stdout)
+
+    def test_versions_must_descend(self):
+        r = self.check("# C\n\n## [Unreleased]\n\n## [1.0.0] - 2026-01-01\n\n- x\n\n## [1.1.0] - 2026-02-01\n\n- y\n")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("CHANGELOG.md: line 9: 1.1.0 is not below 1.0.0; versions must be newest first", r.stdout)
+
+    def test_headings_in_code_fences_are_ignored(self):
+        r = self.check(VALID_LOG.replace("- A flag.\n", "- A flag:\n\n```\n## not a heading\n```\n"))
+        self.assertEqual(r.returncode, 0, r.stdout)
+
+    def test_package_changelogs_are_not_structurally_checked(self):
+        r = self.check(VALID_LOG, {"packages/a/CHANGELOG.md": "# a\n\n## 1.0\n"})
+        self.assertEqual(r.returncode, 0, r.stdout)
 
 
 class InitTest(TempRepo):
@@ -121,18 +187,21 @@ class StrictPlaceholderTest(TempRepo):
     def test_urls_and_date_formats_are_not_placeholders(self):
         self.write("AGENTS.md", "# AGENTS.md\n\nShare as `/about?key=<value>`; plans carry `Last updated: YYYY-MM-DD` "
                                 "and live in `a/<domain>.yaml`.\n")
+        self.write("CHANGELOG.md", VALID_LOG)
         r = run("validate_standard.py", self.root, "--strict")
         self.assertEqual(r.returncode, 0, r.stdout)
 
     def test_real_placeholders_are_flagged(self):
         self.write("AGENTS.md", "# AGENTS.md\n\n- Test: `<command>`\n- ok\n- Run: `<other>`\n")
         self.write("PRODUCT.md", "---\nname: x\nlast_reviewed: YYYY-MM-DD\n---\n\n# x\n")
+        self.write("CHANGELOG.md", VALID_LOG)
         r = run("validate_standard.py", self.root, "--strict")
         self.assertEqual(r.returncode, 1)
         self.assertIn("2 unfilled placeholder line(s) at 3, 5", r.stdout)
 
     def test_summary_counts_inferred_claims(self):
         self.write("AGENTS.md", "# AGENTS.md\n\nA (inferred, not verified)\nB (inferred, not verified)\n")
+        self.write("CHANGELOG.md", VALID_LOG)
         self.assertIn("2 unverified claim(s)", run("validate_standard.py", self.root).stdout)
 
 
