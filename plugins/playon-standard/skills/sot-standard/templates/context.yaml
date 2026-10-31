@@ -1,0 +1,26 @@
+# context.yaml — companion repos an agent needs to judge a change in this repo.
+#
+# The one list of related repos: ARCHITECTURE.md §5 and REVIEW.md point here
+# instead of restating it. playon-reviewer reads this file from the base branch
+# and fetches the listed paths in code before the review starts, so a PR cannot
+# redirect its own review. If this file is absent the reviewer reads this repo
+# only. Coding agents follow the same list via AGENTS.md §7.
+#
+# Keep it short: list only repos whose contents change the verdict on a change
+# here (an API this repo serves or consumes, shared schemas, the team's domain
+# notes), and only the paths that matter. Validate with
+# scripts/validate_standard.py.
+
+version: 0
+context:
+  - name: "<short name, e.g. payments wiki>"
+    repo: "<org/name, e.g. playon/wiki>"
+    paths:                               # directories or files to fetch
+      - "<content/systems/<service>/>"
+    exclude: ["**/*.png"]                # optional glob list
+    entry: "<file under paths to read first, e.g. content/systems/<service>/_index.md>"
+    why: "<one line - what a reviewer learns here that changes the verdict>"
+    search: |                            # optional: how to use this source
+      <Start with the system page for the service in the PR. If the PR
+      changes a table or column, look it up in lineage/ to see what reads
+      from it downstream.>
