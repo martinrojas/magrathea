@@ -67,6 +67,12 @@ class InitTest(TempRepo):
         self.assertEqual(v.returncode, 0, v.stdout)
         self.assertNotIn("link target not found", v.stdout)
 
+    def test_ui_template_is_flagged_as_unfilled_under_strict(self):
+        self.init("ui")
+        v = run("validate_standard.py", self.root, "--strict")
+        self.assertEqual(v.returncode, 1, v.stdout)
+        self.assertRegex(v.stdout, r"ERROR\s+DESIGN\.md: \d+ unfilled placeholder")
+
     def test_unknown_token_is_usage_error(self):
         self.assertEqual(run("scaffold.py", "init", self.root, "--with", "nope").returncode, 2)
 
@@ -122,11 +128,13 @@ class UpgradeTest(TempRepo):
         r = run("scaffold.py", "upgrade", self.root)
         self.assertEqual(r.returncode, 0, r.stderr)
         out = json.loads(r.stdout)
-        self.assertEqual((out["from"], out["notes"], out["validator_refreshed"]), ("0.0.9", [], True))
+        self.assertEqual((out["from"], out["validator_refreshed"]), ("0.0.9", True))
+        self.assertEqual([Path(n).name for n in out["notes"]], ["0.3.0.md"])
         self.assertEqual((self.root / ".sot-standard").read_text(), "0.0.9\n")
+        current = (SCRIPTS.parent / "templates" / ".sot-standard").read_text().strip()
         r = run("scaffold.py", "upgrade", self.root, "--finish")
-        self.assertEqual(json.loads(r.stdout), {"stamp": "0.1.0"})
-        self.assertEqual((self.root / ".sot-standard").read_text(), "0.1.0\n")
+        self.assertEqual(json.loads(r.stdout), {"stamp": current})
+        self.assertEqual((self.root / ".sot-standard").read_text(), current + "\n")
 
     def test_newer_repo_stamp_fails(self):
         self.init("")
