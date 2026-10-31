@@ -15,6 +15,14 @@
       "license": "MIT",
       "category": "development",
       "tags": ["workflow", "planning", "tdd", "code-review", "debugging", "subagents"]
+    },
+    {
+      "name": "slartibartfast",
+      "source": "./plugins/slartibartfast",
+      "description": "Source-of-Truth Standard: adopt it, keep grounding docs in sync, record decisions and domain rules, upgrade it",
+      "version": "0.1.0",
+      "category": "development",
+      "tags": ["documentation", "standards", "agents-md", "adr", "business-rules"]
     }
   ]
 }
