@@ -1,6 +1,6 @@
 # Semver changelog in the Source-of-Truth Standard
 
-Plugin: `plugins/slartibartfast`. Branch: `feature/semver-changelog`, **stacked on `feature/design-md-spec` (PR #1, 0.3.0)** because the 0.4.0 stamp, catalog bump and upgrade-note sequence assume 0.3.0 exists. Its PR targets `feature/design-md-spec`; after PR #1 merges, retarget it to `main` (rebase if needed). Do not merge it before PR #1. Target release: 0.4.0.
+Plugin: `plugins/slartibartfast`. Branch: `feature/semver-changelog`, based on `main` after PR #1 (0.3.0) merged, so the 0.4.0 stamp, catalog bump and upgrade-note sequence build on 0.3.0. Target release: 0.4.0.
 
 ## Intent
 
