@@ -18,6 +18,7 @@ beats a summary, because the summary drifts.
 | [`DESIGN.md`](./DESIGN.md) | Look and feel: tokens, typography, spacing, components | Any UI or visual decision |
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Non-inferable technical context: boundaries, constraints, risky flows, oddities, risks | A change crossing a module boundary, touching an integration, or that looks "wrong" but may be intentional |
 | [`docs/decisions/`](./docs/decisions/README.md) | Why past choices were made, with status | Before proposing architectural or cross-cutting changes |
+| [`CHANGELOG.md`](./CHANGELOG.md) | User-visible changes per release, under semantic versioning | Any user-visible change: add its entry under `Unreleased` |
 | This file | How we work: commands, layout, conventions, done | Any code, test, or tooling decision |
 
 - **Product questions start at `PRODUCT.md`, not at assumption.** It tells you
@@ -100,5 +101,6 @@ Important files (entry points and config; keep to a handful):
 - Behavior matches the domain's rules; each rule's example has a test.
 - UI follows `DESIGN.md`; boundaries and accepted decisions are respected.
 - Tests, lint, and typecheck pass.
+- User-visible changes have an entry under `Unreleased` in `CHANGELOG.md`; released sections are never edited.
 - Summary cites the IDs served and notes any new assumption, rule proposal,
   decision-record draft, or open question.

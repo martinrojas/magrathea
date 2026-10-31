@@ -16,6 +16,10 @@ def run(script, *args, cwd=None):
 def validate(root):
     return run("validate_standard.py", root)
 
+VALID_LOG = ("# Changelog\n\nPublic interface: the `tool` CLI.\n\n## [Unreleased]\n\n"
+             "## [1.1.0] - 2026-02-01\n\n### Added\n\n- A flag.\n\n"
+             "## [1.0.0] - 2026-01-01\n\nBaseline: changes before this changelog were not tracked.\n")
+
 
 class TempRepo(unittest.TestCase):
     def setUp(self):
@@ -34,15 +38,125 @@ class TempRepo(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         return json.loads(r.stdout)
 
+    def git(self, *args):
+        return subprocess.run(["git", "-C", str(self.root), "-c", "user.name=t", "-c", "user.email=t@t", *args],
+                              check=True, capture_output=True)
+
+
+class ChangelogTest(TempRepo):
+    def check(self, log, files=None):
+        self.write("AGENTS.md", "# AGENTS.md\n")
+        if log is not None:
+            self.write("CHANGELOG.md", log)
+        for rel, text in (files or {}).items():
+            self.write(rel, text)
+        r = validate(self.root)
+        self.assertNotIn("Traceback", r.stderr)
+        return r
+
+    def test_valid_changelog_passes(self):
+        r = self.check(VALID_LOG)
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertNotIn("CHANGELOG.md", r.stdout)
+
+    def test_missing_changelog_errors_at_any_stamp(self):
+        for stamp in (None, "0.3.0\n"):  # no stamp gate: below 0.4.0 still errors
+            if stamp:
+                self.write(".sot-standard", stamp)
+            r = self.check(None)
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("ERROR   CHANGELOG.md: missing (core file)", r.stdout)
+
+    def test_first_heading_must_be_unreleased(self):
+        for log in ("# Changelog\n", "# Changelog\n\n## [1.0.0] - 2026-01-01\n\n- x\n"):
+            r = self.check(log)
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("ERROR   CHANGELOG.md: first ## heading must be [Unreleased]", r.stdout)
+
+    def test_malformed_version_headings(self):
+        r = self.check("# C\n\n## [Unreleased]\n\n## v1.2.0 (2020-01-01)\n\n- a\n\n## [1.0] - 2020-01-01\n\n- b\n\n"
+                       "## [01.0.0] - 2020-01-01\n\n- c\n\n## [1.0.0]\n\n- d\n")
+        self.assertEqual(r.returncode, 1)
+        for n in (5, 9, 13, 17):
+            self.assertIn(f"CHANGELOG.md: line {n}: version heading must be '## [x.y.z] - YYYY-MM-DD'", r.stdout)
+
+    def test_invalid_calendar_date(self):
+        r = self.check("# C\n\n## [Unreleased]\n\n## [1.0.0] - 2026-02-30\n\n- x\n")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("CHANGELOG.md: line 5: invalid date 2026-02-30", r.stdout)
+
+    def test_duplicate_version(self):
+        r = self.check("# C\n\n## [Unreleased]\n\n## [1.0.0] - 2026-01-02\n\n- x\n\n## [1.0.0] - 2026-01-01\n\n- y\n")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("CHANGELOG.md: line 9: duplicate version 1.0.0", r.stdout)
+        self.assertNotIn("newest first", r.stdout)
+
+    def test_versions_must_descend(self):
+        r = self.check("# C\n\n## [Unreleased]\n\n## [1.0.0] - 2026-01-01\n\n- x\n\n## [1.1.0] - 2026-02-01\n\n- y\n")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("CHANGELOG.md: line 9: 1.1.0 is not below 1.0.0; versions must be newest first", r.stdout)
+
+    def test_headings_in_code_fences_are_ignored(self):
+        r = self.check(VALID_LOG.replace("- A flag.\n", "- A flag:\n\n```\n## not a heading\n```\n"))
+        self.assertEqual(r.returncode, 0, r.stdout)
+
+    def test_package_changelogs_are_not_structurally_checked(self):
+        r = self.check(VALID_LOG, {"packages/a/CHANGELOG.md": "# a\n\n## 1.0\n"})
+        self.assertEqual(r.returncode, 0, r.stdout)
+
+    def test_unknown_subsection_warns(self):
+        r = self.check(VALID_LOG.replace("### Added", "### Misc"))
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("warning CHANGELOG.md: line 9: unknown subsection 'Misc'", r.stdout)
+
+    def test_release_without_entries_warns(self):
+        r = self.check("# C\n\n## [Unreleased]\n\n## [1.0.0] - 2026-01-01\n\n### Added\n\n"
+                       "[1.0.0]: https://example.com/v1.0.0\n")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("warning CHANGELOG.md: line 5: release 1.0.0 has no entries", r.stdout)
+
+    def test_zero_major_warns(self):
+        r = self.check("# C\n\n## [Unreleased]\n\n## [0.3.0] - 2026-01-01\n\n- x\n")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("warning CHANGELOG.md: line 5: 0.3.0 is a 0.x version; the first recorded version is 1.0.0",
+                      r.stdout)
+
+    def test_manifest_version_mismatch_warns(self):
+        r = self.check(VALID_LOG, {"package.json": '{"version": "0.9.0"}'})
+        self.assertIn("warning CHANGELOG.md: top release 1.1.0 differs from package.json version 0.9.0", r.stdout)
+        self.write("package.json", '{"version": "1.1.0"}')
+        self.assertNotIn("differs from", validate(self.root).stdout)
+
+    def test_manifest_is_first_that_declares_a_version(self):
+        files = {"package.json": '{"name": "x"}',
+                 "pyproject.toml": '[tool.other]\nversion = "9.9.9"\n\n[project]\nname = "x"\nversion = "2.0.0"\n',
+                 "Cargo.toml": '[package]\nversion = "3.0.0"\n'}
+        self.assertIn("differs from pyproject.toml version 2.0.0", self.check(VALID_LOG, files).stdout)
+        (self.root / "pyproject.toml").unlink()
+        self.assertIn("differs from Cargo.toml version 3.0.0", validate(self.root).stdout)
+
+    def test_unreleased_only_has_no_manifest_warning(self):
+        r = self.check("# C\n\n## [Unreleased]\n", {"package.json": '{"version": "0.1.0"}'})
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertNotIn("CHANGELOG.md", r.stdout)
+
+    def test_unreadable_manifests_are_ignored(self):
+        for text in ("{nope", '{"version": 1}', "[1, 2]"):
+            r = self.check(VALID_LOG, {"package.json": text})
+            self.assertEqual(r.returncode, 0, r.stdout)
+            self.assertNotIn("differs from", r.stdout)
+
 
 class InitTest(TempRepo):
     def test_empty_set_writes_minimal_repo(self):
         out = self.init("")
         files = {p.relative_to(self.root).as_posix() for p in self.root.rglob("*") if p.is_file()}
-        self.assertEqual(files, {"AGENTS.md", "CLAUDE.md", ".sot-standard", "scripts/validate_standard.py"})
+        self.assertEqual(files, {"AGENTS.md", "CLAUDE.md", "CHANGELOG.md", ".sot-standard",
+                                 "scripts/validate_standard.py"})
         self.assertEqual(out["skipped"], [])
         text = (self.root / "AGENTS.md").read_text()
         rows = [l for l in text.splitlines() if l.startswith("| ")]
+        self.assertTrue([r for r in rows if r.startswith("| [`CHANGELOG.md`](./CHANGELOG.md) |")])
         for gone in ("PRODUCT.md", "DESIGN.md", "ARCHITECTURE.md", "docs/decisions", "docs/rules"):
             self.assertFalse([r for r in rows if gone in r], gone)
         self.assertIn("## 7. Definition of done", text)
@@ -51,13 +165,27 @@ class InitTest(TempRepo):
         r = subprocess.run([sys.executable, "scripts/validate_standard.py", "."], cwd=self.root,
                            capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertNotIn("CHANGELOG.md", r.stdout)
 
     def test_full_software_set_validates(self):
-        self.init("product,architecture,decisions")
+        out = self.init("product,architecture,decisions")
+        self.assertIn("CHANGELOG.md", out["created"])
         agents = (self.root / "AGENTS.md").read_text()
         self.assertNotIn("DESIGN.md`](./DESIGN.md)", agents)
         v = validate(self.root)
         self.assertEqual(v.returncode, 0, v.stdout)
+
+    def test_changelog_template_is_flagged_as_unfilled_under_strict(self):
+        self.init("")
+        v = run("validate_standard.py", self.root, "--strict")
+        self.assertEqual(v.returncode, 1, v.stdout)
+        self.assertRegex(v.stdout, r"ERROR\s+CHANGELOG\.md: 1 unfilled placeholder line\(s\) at 3\b")
+
+    def test_existing_changelog_is_never_overwritten(self):
+        log = self.write("CHANGELOG.md", "# mine\n")
+        out = self.init("")
+        self.assertEqual(log.read_text(), "# mine\n")
+        self.assertIn("CHANGELOG.md", out["skipped"])
 
     def test_ui_writes_design_template_and_keeps_row(self):
         out = self.init("ui")
@@ -105,18 +233,21 @@ class StrictPlaceholderTest(TempRepo):
     def test_urls_and_date_formats_are_not_placeholders(self):
         self.write("AGENTS.md", "# AGENTS.md\n\nShare as `/about?key=<value>`; plans carry `Last updated: YYYY-MM-DD` "
                                 "and live in `a/<domain>.yaml`.\n")
+        self.write("CHANGELOG.md", VALID_LOG)
         r = run("validate_standard.py", self.root, "--strict")
         self.assertEqual(r.returncode, 0, r.stdout)
 
     def test_real_placeholders_are_flagged(self):
         self.write("AGENTS.md", "# AGENTS.md\n\n- Test: `<command>`\n- ok\n- Run: `<other>`\n")
         self.write("PRODUCT.md", "---\nname: x\nlast_reviewed: YYYY-MM-DD\n---\n\n# x\n")
+        self.write("CHANGELOG.md", VALID_LOG)
         r = run("validate_standard.py", self.root, "--strict")
         self.assertEqual(r.returncode, 1)
         self.assertIn("2 unfilled placeholder line(s) at 3, 5", r.stdout)
 
     def test_summary_counts_inferred_claims(self):
         self.write("AGENTS.md", "# AGENTS.md\n\nA (inferred, not verified)\nB (inferred, not verified)\n")
+        self.write("CHANGELOG.md", VALID_LOG)
         self.assertIn("2 unverified claim(s)", run("validate_standard.py", self.root).stdout)
 
 
@@ -129,12 +260,19 @@ class UpgradeTest(TempRepo):
         self.assertEqual(r.returncode, 0, r.stderr)
         out = json.loads(r.stdout)
         self.assertEqual((out["from"], out["validator_refreshed"]), ("0.0.9", True))
-        self.assertEqual([Path(n).name for n in out["notes"]], ["0.3.0.md"])
+        self.assertEqual([Path(n).name for n in out["notes"]], ["0.3.0.md", "0.4.0.md"])
         self.assertEqual((self.root / ".sot-standard").read_text(), "0.0.9\n")
         current = (SCRIPTS.parent / "templates" / ".sot-standard").read_text().strip()
         r = run("scaffold.py", "upgrade", self.root, "--finish")
         self.assertEqual(json.loads(r.stdout), {"stamp": current})
         self.assertEqual((self.root / ".sot-standard").read_text(), current + "\n")
+
+    def test_0_3_0_repo_gets_changelog_note(self):
+        self.init("")
+        (self.root / ".sot-standard").write_text("0.3.0\n")
+        out = json.loads(run("scaffold.py", "upgrade", self.root).stdout)
+        self.assertEqual((out["to"], [Path(n).name for n in out["notes"]]),
+                         ("0.4.0", ["0.4.0.md"]))
 
     def test_newer_repo_stamp_fails(self):
         self.init("")
@@ -165,6 +303,20 @@ class DetectTest(TempRepo):
         d = json.loads(run("detect.py", self.root).stdout)
         self.assertEqual(len(d["errors"]), 1)
         self.assertEqual(d["stack"], ["node"])
+        self.assertIsNone(d["manifest_version"])
+
+    def test_changelog_manifest_version_and_history(self):
+        self.write("CHANGELOG.md", "# C\n")
+        self.write("package.json", '{"version": "0.2.0"}')
+        d = json.loads(run("detect.py", self.root).stdout)
+        self.assertIn("CHANGELOG.md", d["existing"])
+        self.assertEqual(d["manifest_version"], {"file": "package.json", "version": "0.2.0"})
+        self.assertFalse(d["git_has_commits"])
+        self.git("init", "-q", "-b", "main")
+        self.assertFalse(json.loads(run("detect.py", self.root).stdout)["git_has_commits"])
+        self.git("add", "-A")
+        self.git("commit", "-qm", "init")
+        self.assertTrue(json.loads(run("detect.py", self.root).stdout)["git_has_commits"])
 
 
 class NextIdTest(TempRepo):
@@ -271,11 +423,9 @@ class DocMapTest(TempRepo):
         self.assertEqual(list(o), ["packages/api/AGENTS.md"])
 
     def test_git_changes_are_used_without_paths(self):
-        git = lambda *a: subprocess.run(["git", "-C", str(self.root), "-c", "user.name=t", "-c", "user.email=t@t", *a],
-                                        check=True, capture_output=True)
-        git("init", "-q", "-b", "main")
-        git("add", "-A")
-        git("commit", "-qm", "init")
+        self.git("init", "-q", "-b", "main")
+        self.git("add", "-A")
+        self.git("commit", "-qm", "init")
         self.write("src/scanner/new.ts", "")
         d, o = self.doc_map()
         self.assertEqual(d["changed"], ["src/scanner/new.ts"])
