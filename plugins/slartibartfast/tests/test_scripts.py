@@ -100,6 +100,48 @@ class ChangelogTest(TempRepo):
         r = self.check(VALID_LOG, {"packages/a/CHANGELOG.md": "# a\n\n## 1.0\n"})
         self.assertEqual(r.returncode, 0, r.stdout)
 
+    def test_unknown_subsection_warns(self):
+        r = self.check(VALID_LOG.replace("### Added", "### Misc"))
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("warning CHANGELOG.md: line 9: unknown subsection 'Misc'", r.stdout)
+
+    def test_release_without_entries_warns(self):
+        r = self.check("# C\n\n## [Unreleased]\n\n## [1.0.0] - 2026-01-01\n\n### Added\n\n"
+                       "[1.0.0]: https://example.com/v1.0.0\n")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("warning CHANGELOG.md: line 5: release 1.0.0 has no entries", r.stdout)
+
+    def test_zero_major_warns(self):
+        r = self.check("# C\n\n## [Unreleased]\n\n## [0.3.0] - 2026-01-01\n\n- x\n")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("warning CHANGELOG.md: line 5: 0.3.0 is a 0.x version; the first recorded version is 1.0.0",
+                      r.stdout)
+
+    def test_manifest_version_mismatch_warns(self):
+        r = self.check(VALID_LOG, {"package.json": '{"version": "0.9.0"}'})
+        self.assertIn("warning CHANGELOG.md: top release 1.1.0 differs from package.json version 0.9.0", r.stdout)
+        self.write("package.json", '{"version": "1.1.0"}')
+        self.assertNotIn("differs from", validate(self.root).stdout)
+
+    def test_manifest_is_first_that_declares_a_version(self):
+        files = {"package.json": '{"name": "x"}',
+                 "pyproject.toml": '[tool.other]\nversion = "9.9.9"\n\n[project]\nname = "x"\nversion = "2.0.0"\n',
+                 "Cargo.toml": '[package]\nversion = "3.0.0"\n'}
+        self.assertIn("differs from pyproject.toml version 2.0.0", self.check(VALID_LOG, files).stdout)
+        (self.root / "pyproject.toml").unlink()
+        self.assertIn("differs from Cargo.toml version 3.0.0", validate(self.root).stdout)
+
+    def test_unreleased_only_has_no_manifest_warning(self):
+        r = self.check("# C\n\n## [Unreleased]\n", {"package.json": '{"version": "0.1.0"}'})
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertNotIn("CHANGELOG.md", r.stdout)
+
+    def test_unreadable_manifests_are_ignored(self):
+        for text in ("{nope", '{"version": 1}', "[1, 2]"):
+            r = self.check(VALID_LOG, {"package.json": text})
+            self.assertEqual(r.returncode, 0, r.stdout)
+            self.assertNotIn("differs from", r.stdout)
+
 
 class InitTest(TempRepo):
     def test_empty_set_writes_minimal_repo(self):

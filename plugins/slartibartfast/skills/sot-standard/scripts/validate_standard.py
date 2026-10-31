@@ -11,6 +11,7 @@ Stdlib only, except that full checking of docs/rules/*.yaml needs PyYAML
 """
 import argparse
 import datetime
+import json
 import os
 import re
 import sys
@@ -45,6 +46,10 @@ SCAN_DIRS = ("decisions", "rules", "guides")
 STAMP = re.compile(r"^\d+\.\d+\.\d+$")
 SEMVER_CORE = r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)"
 VERSION_HEADING = re.compile(rf"^## \[({SEMVER_CORE})\] - (\d{{4}}-\d{{2}}-\d{{2}})$")
+CHANGELOG_SUBSECTIONS = {"Added", "Changed", "Deprecated", "Removed", "Fixed", "Security"}
+LINK_REF = re.compile(r"^\[[^\]]+\]:\s*\S+")
+TOML_TABLE = re.compile(r"^\s*\[\s*([A-Za-z0-9_.-]+)\s*\](?:\s*#.*)?$")
+TOML_VERSION = re.compile(r'^\s*version\s*=\s*["\']([^"\']+)["\']')
 
 errors, warnings = [], []
 
@@ -335,6 +340,57 @@ def check_basics(root, budget):
             warn(name, "front matter has no last_reviewed")
 
 
+def _toml_version(path, target_tables):
+    try:
+        text = path.read_text(encoding="utf-8")
+    except Exception:
+        return None
+    current_table = None
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("[["):
+            current_table = None
+            continue
+        tm = TOML_TABLE.match(line)
+        if tm:
+            current_table = tm.group(1)
+            continue
+        if current_table in target_tables:
+            vm = TOML_VERSION.match(line)
+            if vm:
+                return vm.group(1)
+    return None
+
+
+def manifest_version(root):
+    root = Path(root)
+    pkg = root / "package.json"
+    if pkg.is_file():
+        try:
+            data = json.loads(pkg.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                ver = data.get("version")
+                if isinstance(ver, str) and ver.strip():
+                    return ("package.json", ver.strip())
+        except Exception:
+            pass
+
+    pyproj = root / "pyproject.toml"
+    if pyproj.is_file():
+        ver = _toml_version(pyproj, ("project", "tool.poetry"))
+        if ver is not None:
+            return ("pyproject.toml", ver)
+
+    cargo = root / "Cargo.toml"
+    if cargo.is_file():
+        ver = _toml_version(cargo, ("package",))
+        if ver is not None:
+            return ("Cargo.toml", ver)
+
+    return None
+
 def check_changelog(root):
     path = root / "CHANGELOG.md"
     if not path.exists():
@@ -352,6 +408,14 @@ def check_changelog(root):
         return
     if sections[0][1].rstrip() != "## [Unreleased]":
         err("CHANGELOG.md", "first ## heading must be [Unreleased]")
+
+    for _, _, body in sections:
+        for n, line in body:
+            if line.startswith("### "):
+                name = line[4:].strip()
+                if name not in CHANGELOG_SUBSECTIONS:
+                    warn("CHANGELOG.md", f"line {n}: unknown subsection '{name}'")
+
     seen_versions = set()
     prev_ver = None
     prev_ver_str = None
@@ -377,6 +441,23 @@ def check_changelog(root):
         seen_versions.add(ver_tuple)
         released_sections.append((n, ver_str, ver_tuple, body))
 
+    for n, ver_str, ver_tuple, body in released_sections:
+        if ver_tuple[0] == 0:
+            warn("CHANGELOG.md", f"line {n}: {ver_str} is a 0.x version; the first recorded version is 1.0.0")
+        has_entries = any(
+            line.strip() and not line.startswith("### ") and not LINK_REF.match(line.strip())
+            for _, line in body
+        )
+        if not has_entries:
+            warn("CHANGELOG.md", f"line {n}: release {ver_str} has no entries")
+
+    if released_sections:
+        mv = manifest_version(root)
+        if mv is not None:
+            file_name, file_ver = mv
+            top_ver = released_sections[0][1]
+            if top_ver != file_ver:
+                warn("CHANGELOG.md", f"top release {top_ver} differs from {file_name} version {file_ver}")
 
 def check_stamp(root):
     p = root / ".sot-standard"
