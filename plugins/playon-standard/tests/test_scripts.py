@@ -217,5 +217,67 @@ class NextIdTest(TempRepo):
         self.assertEqual(run("next_id.py", "br", "Bad-Domain", "--root", self.root).returncode, 2)
 
 
+class DocMapTest(TempRepo):
+    def setUp(self):
+        super().setUp()
+        self.write("AGENTS.md", "# AGENTS.md\n\n- Entry: `src/api/server.ts#start`\n- Layout: `src/` code\n")
+        self.write("ARCHITECTURE.md", "| ID | Part | Owns |\n|----|------|------|\n"
+                                      "| BD1 | `src/scanner/` | scanning |\n| BD2 | <module> | x |\n")
+        self.write("docs/rules/admission.yaml", "domain: admission\npaths:   # owned\n"
+                                                "  - src/admission/**\n  - <src/other/**>\nrules: []\n")
+        self.write("docs/decisions/0001-accepted.md", "---\nid: ADR-0001\nstatus: accepted\n---\n"
+                                                      "Applies to `src/queue/worker.ts`.\n")
+
+    def doc_map(self, *paths):
+        r = run("doc_map.py", "--root", self.root, *paths)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        d = json.loads(r.stdout)
+        return d, {o["doc"]: o for o in d["owners"]}
+
+    def test_each_owner_kind(self):
+        d, o = self.doc_map("src/admission/a/b.ts", "src/scanner/x.ts", "src/api/server.ts", "package.json",
+                            "src/misc/x.ts")
+        self.assertEqual(o["docs/rules/admission.yaml"]["via"], ["paths: src/admission/**"])
+        self.assertEqual(o["docs/rules/admission.yaml"]["paths"], ["src/admission/a/b.ts"])
+        self.assertEqual(o["ARCHITECTURE.md"]["via"], ["BD1"])
+        self.assertEqual(o["ARCHITECTURE.md"]["paths"], ["src/scanner/x.ts"])
+        self.assertEqual(o["AGENTS.md"]["via"], ["cites src/api/server.ts", "commands"])
+        self.assertEqual(o["AGENTS.md"]["paths"], ["package.json", "src/api/server.ts"])
+        self.assertEqual(d["unowned"], ["src/misc/x.ts"])
+        self.assertEqual(sorted(d["stale"]), ["AGENTS.md", "ARCHITECTURE.md", "docs/rules/admission.yaml"])
+
+    def test_directory_citations_do_not_own_code(self):
+        d, o = self.doc_map("src/other.ts")
+        self.assertEqual(d["unowned"], ["src/other.ts"])
+        self.assertEqual(d["owners"], [])
+
+    def test_changed_doc_is_not_stale_and_accepted_status_is_reported(self):
+        d, o = self.doc_map("docs/rules/admission.yaml", "src/admission/x.ts", "src/queue/worker.ts")
+        self.assertTrue(o["docs/rules/admission.yaml"]["doc_changed"])
+        self.assertNotIn("docs/rules/admission.yaml", d["stale"])
+        self.assertEqual(o["docs/decisions/0001-accepted.md"]["status"], "accepted")
+        self.assertIn("docs/decisions/0001-accepted.md", d["stale"])
+        self.assertNotIn("docs/rules/admission.yaml", d["unowned"])
+
+    def test_nested_package_commands_go_to_nearest_agents_md(self):
+        self.write("packages/api/AGENTS.md", "@../../AGENTS.md\n")
+        d, o = self.doc_map("packages/api/package.json")
+        self.assertEqual(list(o), ["packages/api/AGENTS.md"])
+
+    def test_git_changes_are_used_without_paths(self):
+        git = lambda *a: subprocess.run(["git", "-C", str(self.root), "-c", "user.name=t", "-c", "user.email=t@t", *a],
+                                        check=True, capture_output=True)
+        git("init", "-q", "-b", "main")
+        git("add", "-A")
+        git("commit", "-qm", "init")
+        self.write("src/scanner/new.ts", "")
+        d, o = self.doc_map()
+        self.assertEqual(d["changed"], ["src/scanner/new.ts"])
+        self.assertEqual(d["stale"], ["ARCHITECTURE.md"])
+
+    def test_not_a_git_repo_without_paths_is_usage_error(self):
+        self.assertEqual(run("doc_map.py", "--root", self.root).returncode, 2)
+
+
 if __name__ == "__main__":
     unittest.main()
