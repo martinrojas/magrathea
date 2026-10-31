@@ -128,11 +128,13 @@ class UpgradeTest(TempRepo):
         r = run("scaffold.py", "upgrade", self.root)
         self.assertEqual(r.returncode, 0, r.stderr)
         out = json.loads(r.stdout)
-        self.assertEqual((out["from"], out["notes"], out["validator_refreshed"]), ("0.0.9", [], True))
+        self.assertEqual((out["from"], out["validator_refreshed"]), ("0.0.9", True))
+        self.assertEqual([Path(n).name for n in out["notes"]], ["0.3.0.md"])
         self.assertEqual((self.root / ".sot-standard").read_text(), "0.0.9\n")
+        current = (SCRIPTS.parent / "templates" / ".sot-standard").read_text().strip()
         r = run("scaffold.py", "upgrade", self.root, "--finish")
-        self.assertEqual(json.loads(r.stdout), {"stamp": "0.1.0"})
-        self.assertEqual((self.root / ".sot-standard").read_text(), "0.1.0\n")
+        self.assertEqual(json.loads(r.stdout), {"stamp": current})
+        self.assertEqual((self.root / ".sot-standard").read_text(), current + "\n")
 
     def test_newer_repo_stamp_fails(self):
         self.init("")
