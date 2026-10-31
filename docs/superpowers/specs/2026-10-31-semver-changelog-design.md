@@ -1,6 +1,6 @@
 # Semver changelog in the Source-of-Truth Standard
 
-Plugin: `plugins/slartibartfast`. Branch: `feature/semver-changelog` (from `main`). Target release: 0.4.0.
+Plugin: `plugins/slartibartfast`. Branch: `feature/semver-changelog`, **stacked on `feature/design-md-spec` (PR #1, 0.3.0)** because the 0.4.0 stamp, catalog bump and upgrade-note sequence assume 0.3.0 exists. Its PR targets `feature/design-md-spec`; after PR #1 merges, retarget it to `main` (rebase if needed). Do not merge it before PR #1. Target release: 0.4.0.
 
 ## Intent
 
@@ -21,7 +21,7 @@ Non-goals
 
 Anti-goals (failure even if it "works")
 - An agent rewriting or deleting a released section.
-- Upgrade or CI breaking for repos that have not yet been migrated.
+- Upgrade breaking an adopter midway: the vendored validator only changes at `scaffold.py upgrade` step 1, and the 0.4.0 note creates `CHANGELOG.md` before the validation step, so a repo that follows the upgrade skill never sees a spurious missing-file error.
 - A baseline `1.0.0` that claims history the project does not have.
 
 ## Constraints
@@ -61,15 +61,15 @@ Chosen by the user: **B**. The "was an entry added" nudge from C goes into the `
 **Template.** `templates/CHANGELOG.md`: title, a public-interface placeholder line, a plain-text pointer to the rules ("the standard's 'Changelog and versions' section, in the slartibartfast plugin's `STANDARD.md`"; no Markdown link, because `STANDARD.md` is not vendored into adopters and `check_links` errors on missing local targets), links to keepachangelog.com and semver.org, and an empty `## [Unreleased]`. It always scaffolds (like `AGENTS.md`, no `--with` token). `AGENTS.md` template gets a static row in section 1 and one definition-of-done line; no transform needed.
 
 **Validator (`validate_standard.py`).**
-- Missing `CHANGELOG.md`: error only when `.sot-standard` is at 0.4.0 or later. Older stamps are not failed, because the upgrade note creates the file before `--finish` raises the stamp. Below 0.4.0 it is silent.
+- Missing `CHANGELOG.md`: error, for every repo, with no stamp gate (core means core; the user chose this). A repo below 0.4.0 that runs the plugin's validator (the edit hook does) is told to upgrade; repos using their older vendored validator are unaffected until they upgrade. `upgrade-standard` also re-runs the validator after `--finish` as a backstop.
 - Errors: first `##` heading is not `[Unreleased]`; a version heading that is not valid semver or not `## [x.y.z] - YYYY-MM-DD`; invalid calendar date; duplicate version; versions not strictly descending.
 - Warnings: unknown subsection name; a released version with no entries; top released version differs from the manifest version (`package.json`, `pyproject.toml`, `Cargo.toml`, first found); a `0.x` version.
 - Unfilled public-interface placeholder is caught by existing `--strict`.
 - `CHANGELOG.md` joins `SCAN_NAMES` in the validator (so link and `--strict` placeholder checks cover it) and the names in `validate-grounding.ts` that trigger validation.
 
-**Adopt and detect.** `detect.py` adds `CHANGELOG.md` to `existing` and reports `manifest_version` and whether the git history has commits. After scaffold, if the repo has history and no changelog existed, `adopt-standard` writes `## [1.0.0] - <adoption date>` with one line: "Baseline: changes before this changelog were not tracked." It then offers to set the manifest version to `1.0.0`, because the validator warns on a mismatch. A greenfield repo keeps only `Unreleased`; its first release is `1.0.0`. An existing `CHANGELOG.md` is never replaced. If it fails the structural checks, `adopt-standard` reconciles it minimally, as it does for a skipped `AGENTS.md`: prepend `## [Unreleased]`, normalize version headings to `## [x.y.z] - YYYY-MM-DD` (use the date the source states, else flag it; never invent one), and keep every entry's text. Nothing under a released heading is deleted or reworded.
+**Adopt and detect.** `detect.py` adds `CHANGELOG.md` to `existing` and reports `manifest_version` and whether the git history has commits. After scaffold, if the repo has history and no changelog existed, `adopt-standard` writes `## [1.0.0] - <adoption date>` with one line: "Baseline: changes before this changelog were not tracked." It then offers to set the manifest version to `1.0.0`, because the validator warns on a mismatch. A greenfield repo keeps only `Unreleased`; its first release is `1.0.0`. An existing `CHANGELOG.md` is never replaced or rewritten automatically. If it fails the structural checks, `adopt-standard` reports each failure, shows a proposed diff (prepend `## [Unreleased]`, normalize version headings, no invented dates), and applies it only after the user agrees; released history is never edited without that yes.
 
-**Upgrade.** `upgrades/0.4.0.md` instructs: create `CHANGELOG.md` from the template (baseline `1.0.0` as above if there is history; reconcile an existing one as above), add the `AGENTS.md` row and definition-of-done line. Stamp and catalog bump to `0.4.0` together. Because the missing-file check is silent until the stamp reaches 0.4.0, `upgrade-standard` re-runs the validator after `scaffold.py upgrade . --finish`, so a skipped changelog fails there instead of in later CI.
+**Upgrade.** `upgrades/0.4.0.md` instructs: create `CHANGELOG.md` from the template (baseline `1.0.0` as above if there is history; for an existing one, report failures and propose a diff as above), add the `AGENTS.md` row and definition-of-done line. Stamp and catalog bump to `0.4.0` together, on top of 0.3.0. `upgrade-standard` re-runs the validator after `scaffold.py upgrade . --finish` as a backstop.
 
 **sync-docs.** One new step: if the change is user-visible and `Unreleased` has no matching entry, draft one and apply it; list it in the summary.
 
@@ -81,6 +81,6 @@ Exact regexes and manifest parsing; message wording; whether the baseline step i
 
 ## Risks
 
-- Existing adopters on `0.3.0` with no changelog stay green until they upgrade, by design.
+- Repos on `0.3.0` with no changelog fail the plugin's validator until upgraded. Intended: the changelog is core.
 - A manifest at `0.1.0` plus a baseline `1.0.0` warns until the manifest is bumped; the adopt step offers the bump.
 - `AGENTS.md` template grows to about 106 lines, above the 100 target but under the 150 limit; it warns today already.
