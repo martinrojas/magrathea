@@ -39,10 +39,12 @@ class InitTest(TempRepo):
     def test_empty_set_writes_minimal_repo(self):
         out = self.init("")
         files = {p.relative_to(self.root).as_posix() for p in self.root.rglob("*") if p.is_file()}
-        self.assertEqual(files, {"AGENTS.md", "CLAUDE.md", ".sot-standard", "scripts/validate_standard.py"})
+        self.assertEqual(files, {"AGENTS.md", "CLAUDE.md", "CHANGELOG.md", ".sot-standard",
+                                 "scripts/validate_standard.py"})
         self.assertEqual(out["skipped"], [])
         text = (self.root / "AGENTS.md").read_text()
         rows = [l for l in text.splitlines() if l.startswith("| ")]
+        self.assertTrue([r for r in rows if r.startswith("| [`CHANGELOG.md`](./CHANGELOG.md) |")])
         for gone in ("PRODUCT.md", "DESIGN.md", "ARCHITECTURE.md", "docs/decisions", "docs/rules"):
             self.assertFalse([r for r in rows if gone in r], gone)
         self.assertIn("## 7. Definition of done", text)
@@ -51,13 +53,27 @@ class InitTest(TempRepo):
         r = subprocess.run([sys.executable, "scripts/validate_standard.py", "."], cwd=self.root,
                            capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertNotIn("CHANGELOG.md", r.stdout)
 
     def test_full_software_set_validates(self):
-        self.init("product,architecture,decisions")
+        out = self.init("product,architecture,decisions")
+        self.assertIn("CHANGELOG.md", out["created"])
         agents = (self.root / "AGENTS.md").read_text()
         self.assertNotIn("DESIGN.md`](./DESIGN.md)", agents)
         v = validate(self.root)
         self.assertEqual(v.returncode, 0, v.stdout)
+
+    def test_changelog_template_is_flagged_as_unfilled_under_strict(self):
+        self.init("")
+        v = run("validate_standard.py", self.root, "--strict")
+        self.assertEqual(v.returncode, 1, v.stdout)
+        self.assertRegex(v.stdout, r"ERROR\s+CHANGELOG\.md: 1 unfilled placeholder line\(s\) at 3\b")
+
+    def test_existing_changelog_is_never_overwritten(self):
+        log = self.write("CHANGELOG.md", "# mine\n")
+        out = self.init("")
+        self.assertEqual(log.read_text(), "# mine\n")
+        self.assertIn("CHANGELOG.md", out["skipped"])
 
     def test_ui_writes_design_template_and_keeps_row(self):
         out = self.init("ui")

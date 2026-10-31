@@ -39,7 +39,7 @@ PRIORITIES = {"must", "should"}
 DOMAIN = re.compile(r"^[a-z][a-z0-9_]*$")
 STATUSES = {"proposed", "accepted", "rejected", "superseded", "deprecated"}
 OPTIONAL_TARGETS = {"DESIGN.md"}
-SCAN_NAMES = {"AGENTS.md", "CLAUDE.md", "PRODUCT.md", "DESIGN.md", "ARCHITECTURE.md"}
+SCAN_NAMES = {"AGENTS.md", "CLAUDE.md", "PRODUCT.md", "DESIGN.md", "ARCHITECTURE.md", "CHANGELOG.md"}
 SCAN_DIRS = ("decisions", "rules", "guides")
 STAMP = re.compile(r"^\d+\.\d+\.\d+$")
 

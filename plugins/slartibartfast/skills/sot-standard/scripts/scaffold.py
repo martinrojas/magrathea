@@ -90,7 +90,7 @@ def cmd_init(a):
     if unknown:
         raise Fail(f"unknown --with token(s): {', '.join(sorted(unknown))}", 2)
 
-    rels = ["AGENTS.md", "CLAUDE.md"] + [f for t in sorted(tokens) for f in FILES[t]]
+    rels = ["AGENTS.md", "CLAUDE.md", "CHANGELOG.md"] + [f for t in sorted(tokens) for f in FILES[t]]
     created, skipped, writes = [], [], []
     for rel in rels + [".sot-standard", "scripts/validate_standard.py"]:
         (skipped if (root / rel).exists() else created).append(rel)
