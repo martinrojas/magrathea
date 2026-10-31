@@ -22,6 +22,7 @@ is small, each file owns one kind of truth, and everything is lean.
 | `ARCHITECTURE.md` | As needed | Non-inferable technical context: boundaries, constraints, risky flows, oddities, risks |
 | `docs/decisions/` | As needed | One record per significant choice, with status |
 | `docs/guides/` | On demand | Runbooks |
+| `CHANGELOG.md` | Core | User-visible changes per release, under semantic versioning (see "Changelog and versions") |
 | `CLAUDE.md` | Shim | Single line: `@AGENTS.md` |
 
 ## Seven rules
@@ -32,7 +33,7 @@ is small, each file owns one kind of truth, and everything is lean.
 3. **Non-inferable only.** Delete entries the code now makes obvious.
 4. **Code wins on current behavior.** Flag drift and propose a fix.
 5. **Rewrite to current state; do not append.** Decision history lives in the
-   supersede chain.
+   supersede chain. `CHANGELOG.md` is the exception: it is history, so it appends (see "Changelog and versions").
 6. **Verify or label.** State code behavior only after reading code; mark the
    rest "(inferred, not verified)". Never invent safeguards.
 7. **Cite IDs, and cite code by `path#symbol`**, never by line number.
@@ -59,22 +60,50 @@ for production software cannot, and an incomplete source of truth misleads.
 ## Formats
 
 Every grounding document is Markdown with YAML front matter: prose carries
-intent, front matter carries the few fields tools validate. Rules files are
-the exception and are always YAML: they hold records that a tool reads, not
+intent, front matter carries the few fields tools validate.
+`CHANGELOG.md` uses the community Keep a Changelog layout and has no front matter.
+Rules files are the exception and are always YAML: they hold records that a tool reads, not
 prose. YAML
 matched Markdown on accuracy in file-native agent studies while costing far
 fewer tokens for tabular data, and a fixed schema lets tools validate IDs and
 generate tests from examples. No other format (JSON, TOON, XML) is used for
 context files; the evidence favors none of them for agent reading.
 
+## Changelog and versions
+
+`CHANGELOG.md` records user-visible change in the
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) layout under
+[semantic versioning](https://semver.org/spec/v2.0.0.html): `## [Unreleased]`
+first, then `## [x.y.z] - YYYY-MM-DD` sections, newest first, with `Added`,
+`Changed`, `Deprecated`, `Removed`, `Fixed` and `Security` subsections. One
+root changelog and one version, in a monorepo too.
+
+- **Public interface:** whatever users or operators depend on: API, CLI,
+  config, data formats, documented behavior; for an app, user-visible
+  behavior. Name it in one line at the top of the changelog.
+- **MAJOR** for a breaking change to it, **MINOR** for a backward-compatible
+  addition, **PATCH** for a backward-compatible fix.
+- **No `0.x`.** The first recorded version is `1.0.0`. A project adopting the
+  standard with prior history records it as a `1.0.0` baseline and tracks
+  from there.
+- **Entries** go under `Unreleased` in the same PR as the change. Refactors,
+  tests, and docs-only changes get no entry.
+- **Cutting a release:** rename `Unreleased` to the version and date, add a
+  fresh empty `Unreleased`, and bump the manifest version, in one commit.
+  Tagging and publishing are the user's call.
+- **Released sections are immutable** except for typo fixes. Correct a
+  mistake with a new entry.
+
+Rule 5 does not apply here: a changelog is history, so it appends.
+
 ## Sizing
 
 | Project | Use |
 |---------|-----|
-| Small or personal | `AGENTS.md` + `PRODUCT.md` (one domain; rules inline or one rules file) |
+| Small or personal | `AGENTS.md` + `PRODUCT.md` + `CHANGELOG.md` (one domain; rules inline or one rules file) |
 | Software project | Core set + `ARCHITECTURE.md`, `docs/decisions/` as needed; rules files by demand |
 | Monorepo | One root set; each package gets an `AGENTS.md` opening with `@../../AGENTS.md` (one `../` per level of depth), adding only what differs. The `@` import is a Claude Code feature; tools that inject the root file along with the package's make the package file carry only deltas either way |
-| Docs or data repo | `AGENTS.md` only, adapted to content conventions and freshness rules |
+| Docs or data repo | `AGENTS.md` and `CHANGELOG.md` only, adapted to content conventions and freshness rules |
 
 When unsure, choose the lighter option. Adding structure later is easier than
 removing it.
