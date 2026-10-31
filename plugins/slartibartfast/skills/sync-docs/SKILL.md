@@ -12,15 +12,18 @@ Rules: `skill://sot-standard/STANDARD.md` ("Seven rules"). Docs change in the sa
 1. Map the change to the docs that own it:
    `python3 skill://sot-standard/scripts/doc_map.py --root . [--base <base branch>]`
    Owners come from rules `paths:`, ARCHITECTURE.md boundaries, exact-file citations, and command files.
-2. If `stale` is empty, say "No owned docs affected" and stop.
+2. If `stale` is empty, say "No owned docs affected" and go to step 6.
 3. Dispatch one `drift-auditor` task per stale doc, all in a single `task` call. Each task text gives the doc path, its
    `via` list, its `paths`, and its `status` (from the matching `owners` entry).
 4. Read each returned diff against the code, then apply it with `edit`.
    For a doc with `status: accepted`, never apply a diff: report the conflict and offer `record-decision` to
    supersede it. Relay each `Ask <owner>: …` line to the user; do not decide it.
 5. Delete entries the code now makes obvious (rule 3).
-6. Validate: `python3 skill://sot-standard/scripts/validate_standard.py .`
-7. List `unowned` paths that look like domain logic and offer `domain-rules` for them.
+6. Changelog: if the change is user-visible (`STANDARD.md` "Changelog and versions") and `## [Unreleased]` in
+   `CHANGELOG.md` has no entry for it, draft one under the matching subsection and apply it with `edit`. List it in
+   your summary. Never edit a released section.
+7. Validate: `python3 skill://sot-standard/scripts/validate_standard.py .`
+8. List `unowned` paths that look like domain logic and offer `domain-rules` for them.
 
 ## Never
 

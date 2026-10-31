@@ -18,8 +18,11 @@ Rules: `skill://sot-standard/STANDARD.md`. Work on a task branch.
    changed: go straight to the next step.
 4. Validate: `python3 skill://sot-standard/scripts/validate_standard.py .`
 5. Stamp: `python3 skill://sot-standard/scripts/scaffold.py upgrade . --finish`
-6. Commit on the task branch; one PR for the owning team. Push only when asked.
+6. Validate again: `python3 skill://sot-standard/scripts/validate_standard.py .` as a backstop. Fix any error; a
+   missing `CHANGELOG.md` means a note was skipped, so apply it.
+7. Commit on the task branch; one PR for the owning team. Push only when asked.
 
 ## Never
 
 Overwrite filled-in content.
+Edit a released changelog section.
