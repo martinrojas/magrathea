@@ -15,6 +15,14 @@
       "license": "MIT",
       "category": "development",
       "tags": ["workflow", "planning", "tdd", "code-review", "debugging", "subagents"]
+    },
+    {
+      "name": "the-guide",
+      "source": "./plugins/the-guide",
+      "description": "Project Source-of-Truth Standard: adopt it in a repo, keep grounding docs in sync with the code, record decisions and domain rules, set up code review, and upgrade",
+      "version": "1.0.0",
+      "category": "documentation",
+      "tags": ["agents-md", "source-of-truth", "grounding", "code-review", "documentation"]
     }
   ]
 }

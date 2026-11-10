@@ -1,0 +1,70 @@
+# docs/rules/<domain>.yaml — business rules for one domain.
+#
+# Written because agents change this domain's logic and the intent is not
+# recoverable from code. Partial by design: it holds the rules someone needed,
+# not an inventory. When a needed rule is missing, propose an entry and let the
+# owner accept it. Code wins on current behavior; this file wins on intent and
+# exceptions. Cite code by path#symbol, never by line number.
+#
+# IDs are scoped by domain: SD-<domain>-N for decisions, BR-<domain>-N for
+# rules. Never reuse a number. Validate with scripts/validate_standard.py.
+
+domain: <domain>                       # matches its row in PRODUCT.md §7
+owner: <team or person who can accept a rule>
+system_of_record: <link to where product decisions for this domain are made>
+last_reviewed: YYYY-MM-DD
+paths:                                 # optional: source paths this domain owns;
+  - <src/<domain>/**>                  # lets tools load this file only when touched
+
+# Domain terms beyond PRODUCT.md core terms. Give type, unit, and allowed
+# values where a term is an input to a rule.
+terms:
+  - term: <term>
+    definition: <one sentence>
+    type: <e.g. decimal, USD, >= 0>
+
+# What the system decides in this domain. Each decision names its inputs,
+# outcomes, how overlapping rules resolve, and the default when nothing matches.
+# resolution: unique   exactly one rule may match; more than one is a defect
+#             first    first matching rule in listed order wins
+#             priority matching rule with the highest priority wins
+#             collect  all matching rules apply; combine as stated
+decisions:
+  - id: SD-<domain>-1
+    decision: <e.g. Approve refund?>
+    inputs: [<term>, <term>]
+    outcomes: [<approve>, <deny>, <review>]
+    resolution: <unique | first | priority | collect>
+    default: <outcome when no rule matches>
+    depends_on: []                     # other SD ids this decision needs first
+
+# Testable wording (EARS): WHEN <condition> THE SYSTEM SHALL <behavior>.
+# Every rule belongs to a decision, or is a standalone invariant (decision: null).
+# Each example becomes a test.
+rules:
+  - id: BR-<domain>-1
+    rule: WHEN <condition> THE SYSTEM SHALL <behavior>
+    decision: SD-<domain>-1
+    example:
+      given: <inputs>
+      expect: <outcome>
+    source: <policy, law, or PRD link>
+    evidence: <path#function or path#test>  # optional
+    priority: must                     # must | should
+    # effective_from: YYYY-MM-DD       # optional, when rules change over time
+    # supersedes: BR-<domain>-0        # optional
+
+  - id: BR-<domain>-2
+    rule: THE SYSTEM SHALL NOT <prohibited behavior>
+    decision: null
+    example:
+      given: <case>
+      expect: <expected>
+    source: <reason>
+    priority: must
+
+# Rules the owner knows exist but has not written down, so agents ask instead
+# of guessing.
+gaps:
+  - area: <area>
+    ask: <owner>
